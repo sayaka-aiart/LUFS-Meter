@@ -1,0 +1,29 @@
+from pathlib import Path
+import json, math, sys
+root = Path(__file__).resolve().parent.parent
+directory = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'qa/actual-obs-final'
+data = json.loads((directory / 'obs-readings.json').read_text(encoding='utf-8'))
+assert data['nativeDock'] and data['configuredMask'] == data['effectiveMask'] == 2
+assert data['channels'] == 2 and data['rate'] == 48000
+sources = data['sources']
+voice = next(s for s in sources if s['name'].startswith('マイク'))
+bgm = next(s for s in sources if s['name'].startswith('BGM'))
+game = next(s for s in sources if s['name'].startswith('ゲーム'))
+muted = next(s for s in sources if s['name'].startswith('効果'))
+master = data['masters'][0]
+assert voice['available'] and bgm['available'] and game['available'] and not muted['available']
+assert muted['state'] == 'ミュート' and muted['shortTerm'] is None
+assert '送信なし' in game['note']
+assert abs(voice['shortTerm'] - (-16.47)) < .15  # 1kHz, .3 amplitude, OBS fader .5, stereo
+# Different frequencies: energies add. Track1-only game and muted FX must be absent.
+expected = 10 * math.log10(10 ** (voice['shortTerm']/10) + 10 ** (bgm['shortTerm']/10))
+assert abs(master['shortTerm'] - expected) < .1, (master['shortTerm'], expected)
+assert master['target'] == voice['target'] == -14
+assert master['shortTerm'] > -14 and -17 <= voice['shortTerm'] <= -14
+assert (directory / 'obs-dock.png').exists()
+result = dict(status='PASS', scope='OBS 32.2.2 isolated local source/mix measurement, no external stream',
+              voiceLUFS=voice['shortTerm'], bgmLUFS=bgm['shortTerm'], masterLUFS=master['shortTerm'],
+              expectedMasterLUFS=expected, gameExcluded=True, mutedExcluded=True,
+              targetDefault=-14, masterColor='red', voiceColor='yellow')
+(directory / 'verification.json').write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding='utf-8')
+print(json.dumps(result, ensure_ascii=False))

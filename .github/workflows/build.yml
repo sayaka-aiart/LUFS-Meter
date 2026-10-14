@@ -1,0 +1,123 @@
+{
+  "name": "Build and release",
+  "on": {
+    "push": {
+      "branches": [
+        "main"
+      ],
+      "tags": [
+        "v*"
+      ]
+    },
+    "pull_request": {},
+    "workflow_dispatch": {}
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "${{ github.workflow }}-${{ github.ref }}",
+    "cancel-in-progress": false
+  },
+  "jobs": {
+    "core": {
+      "runs-on": "ubuntu-latest",
+      "steps": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Audit public files",
+          "run": "python3 scripts/check_repo.py"
+        },
+        {
+          "name": "Configure measurement tests",
+          "run": "cmake -S . -B build-core -DBUILD_OBS_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release"
+        },
+        {
+          "name": "Build and test",
+          "run": "cmake --build build-core --parallel 2\nctest --test-dir build-core --output-on-failure"
+        }
+      ]
+    },
+    "windows": {
+      "runs-on": "windows-latest",
+      "defaults": {
+        "run": {
+          "shell": "pwsh"
+        }
+      },
+      "steps": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Fetch pinned OBS dependencies",
+          "run": "./scripts/fetch_obs.ps1"
+        },
+        {
+          "name": "Fetch pinned Qt SDK",
+          "run": "./scripts/fetch_qt.ps1"
+        },
+        {
+          "name": "Build and test plugin",
+          "run": "./scripts/build.ps1 -QtPlatform minimal"
+        },
+        {
+          "name": "Package DLL, source and licenses",
+          "run": "python scripts/package.py\nif ($LASTEXITCODE) { throw 'Packaging failed' }"
+        },
+        {
+          "uses": "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+          "with": {
+            "name": "windows-x64",
+            "path": "dist/LUFS-Meter-Windows-x64.zip\ndist/SHA256SUMS.txt",
+            "if-no-files-found": "error",
+            "retention-days": 14
+          }
+        }
+      ]
+    },
+    "release": {
+      "if": "startsWith(github.ref, 'refs/tags/v')",
+      "needs": [
+        "core",
+        "windows"
+      ],
+      "runs-on": "ubuntu-latest",
+      "permissions": {
+        "contents": "write"
+      },
+      "steps": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "uses": "actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131",
+          "with": {
+            "name": "windows-x64",
+            "path": "dist"
+          }
+        },
+        {
+          "name": "Publish release ZIP",
+          "env": {
+            "GH_TOKEN": "${{ github.token }}",
+            "GH_REPO": "${{ github.repository }}",
+            "TAG": "${{ github.ref_name }}"
+          },
+          "run": "VERSION=$(python3 -c 'import re; print(re.search(r\"project\\(obs_lufs_meter VERSION ([0-9.]+)\", open(\"CMakeLists.txt\").read()).group(1))')\ntest \"$TAG\" = \"v$VERSION\"\nif gh release view \"$TAG\" >/dev/null 2>&1; then\n  echo \"Release already exists; keeping its published assets unchanged.\"\nelse\n  gh release create \"$TAG\" dist/LUFS-Meter-Windows-x64.zip dist/SHA256SUMS.txt --verify-tag --title \"LUFS Meter $TAG\" --notes-file docs/RELEASE_NOTES.md\nfi"
+        }
+      ]
+    }
+  }
+}

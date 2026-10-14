@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a LUFS Meter problem
+body:
+  - type: input
+    id: environment
+    attributes:
+      label: Versions
+      placeholder: LUFS Meter version / OBS version / Windows version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+      description: Include the source type, audio layout and streaming track.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or relevant logs
+      description: Remove personal paths, stream keys and account details before posting.

@@ -1,0 +1,13 @@
+{
+  "obsVersion": "32.0.4",
+  "obsCommit": "dcdbd2e9048ae66237fdab32dbba72b745b1b9c5",
+  "obsSourceUrl": "https://codeload.github.com/obsproject/obs-studio/zip/refs/tags/32.0.4",
+  "obsSourceSha256": "5e17f2e99213af77ee15c047755ee3e3e88b78e5eee17351c113d79671ffb98b",
+  "obsRuntimeUrl": "https://github.com/obsproject/obs-studio/releases/download/32.0.4/OBS-Studio-32.0.4-Windows-x64.zip",
+  "obsRuntimeSha256": "fd367a7f156319426f1a600720c1288ad0011da168dff41e0f94dbb18cc1dc0f",
+  "qtVersion": "6.8.3",
+  "qtUrl": "https://github.com/obsproject/obs-deps/releases/download/2025-08-23/windows-deps-qt6-2025-08-23-x64.zip",
+  "qtSha256": "c62e82483bc7c0bf199e8ac3220c66a85a6e8a0cd69a05b6d44f873b830e415f",
+  "libebur128Version": "1.2.6",
+  "libebur128Commit": "67b33abe1558160ed76ada1322329b0e9e058b02"
+}
