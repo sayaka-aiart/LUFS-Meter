@@ -13,11 +13,13 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 
 | 横表示 | 縦表示 |
 | --- | --- |
-| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/vertical.png) |
+| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/vertical.png) |
 
-![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/truepeak.png)
+True Peakのみ（黄色開始値を−12 dBTPにした例）
 
-画像はv0.2.1の検証用OBSでテスト音を計測した画面です。
+![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/truepeak.png)
+
+画像はv0.3.0の検証用OBSでテスト音を計測した画面です。
 
 ## できること
 
@@ -26,7 +28,8 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 - 設定で **LUFSのみ / LUFS＋True Peak / True Peakのみ** を切り替え。
 - 両方表示では横メーターは上下、縦メーターは左右に配置。青緑の太いバーがLUFS、青紫の細いバーがTrue Peak。
 - LUFSの目標値は既定 **−14 LUFS**。3 LU手前から黄色、目標を超えると赤。
-- True Peakは **−6 dBTPから黄色、0 dBTPを超えると赤**。
+- True Peakの黄色開始値は設定で変更可能（既定 **−6 dBTP**）。0 dBTPを超えると赤。
+- True Peakの **MAXホールド** を数値とバーの印で表示。歯車の左のリセットボタンでクリア。
 - ソースごとの目標、表示選択、並べ替え、横・縦表示を右上の歯車で設定。
 - libebur128を内蔵。音声を変更しない計測専用プラグイン。
 

@@ -1,4 +1,4 @@
-param([ValidateSet('horizontal','vertical')][string]$Orientation = 'horizontal', [string]$BuildDir = 'build', [ValidateSet('lufs','both','truepeak')][string]$Metrics = 'lufs')
+param([ValidateSet('horizontal','vertical')][string]$Orientation = 'horizontal', [string]$BuildDir = 'build', [ValidateSet('lufs','both','truepeak')][string]$Metrics = 'lufs', [ValidateRange(-60,0)][double]$TruePeakWarning = -6)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runtimeRoot = Join-Path $projectRoot 'qa\obs-portable'
@@ -10,7 +10,7 @@ if (Test-Path -LiteralPath $settingsPath) { Copy-Item -LiteralPath $settingsPath
 $direction = if ($Orientation -eq 'vertical') { 1 } else { 0 }
 $showLufs = if ($Metrics -eq 'truepeak') { 'false' } else { 'true' }
 $showPeak = if ($Metrics -eq 'lufs') { 'false' } else { 'true' }
-@('[General]', "showLufs=$showLufs", "showTruePeak=$showPeak", "orientation=$direction", 'target=-14', 'displayMode=0') | Set-Content -LiteralPath $settingsPath -Encoding ascii
+@('[General]', "truePeakWarning=$($TruePeakWarning.ToString([Globalization.CultureInfo]::InvariantCulture))", "showLufs=$showLufs", "showTruePeak=$showPeak", "orientation=$direction", 'target=-14', 'displayMode=0') | Set-Content -LiteralPath $settingsPath -Encoding ascii
 if (![IO.Path]::IsPathRooted($BuildDir)) { $BuildDir = Join-Path $projectRoot $BuildDir }
 Copy-Item -LiteralPath (Join-Path $BuildDir 'Release/obs-lufs-meter.dll') -Destination (Join-Path $runtimeRoot 'obs-plugins/64bit/obs-lufs-meter.dll') -Force
 $env:LUFS_METER_QA_DIR = Join-Path $projectRoot "qa\actual-obs-$Metrics-$Orientation"

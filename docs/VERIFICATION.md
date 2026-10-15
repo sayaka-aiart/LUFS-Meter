@@ -1,5 +1,18 @@
 # Verification
 
+## MAX hold and configurable warning 0.3.0 — 2026-10-15
+
+- Measurement tests verify MAX persistence after lower input, mute and queue-loss
+  recovery, and explicit reset followed by a new measurement history.
+- Warning tests cover custom boundaries, the unchanged >0 dBTP red threshold,
+  defaults and invalid/out-of-range configuration values.
+- Widget tests verify the header reset button is left of the gear and invokes reset.
+- Widget tests verify MAX labels during mute, warning save/cancel, immediate
+  recoloring and enable/disable state for LUFS-only / True-Peak-only / both.
+- Isolated OBS 32.2.2 passed both orientations plus True-Peak-only with a saved
+  -12 dBTP warning setting. MAX was never below the current True Peak.
+- Current docs/images show these native readings; settings.png is a widget preview.
+
 ## True Peak and metric selection 0.2.0 — 2026-10-15
 
 - Measurement and widget contracts passed with the new binary.

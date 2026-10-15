@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(obs_lufs_meter VERSION 0.2.1 LANGUAGES C CXX)
+project(obs_lufs_meter VERSION 0.3.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OBS_SOURCE_ROOT "" CACHE PATH "OBS source SDK root")

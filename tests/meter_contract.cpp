@@ -61,8 +61,21 @@ int main() {
     const double samplePeak = 20 * std::log10(1.2 / std::sqrt(2.0));
     const auto tp = intersample->reading().truePeak;
     check(samplePeak < 0 && tp > 1.4 && tp < 1.8, "intersample peak above 0 despite samples below 0 dBFS");
+    const double initialMax = intersample->reading().truePeakMax;
+    check(initialMax >= tp && initialMax < 3, "MAX captures intersample peak");
     tone(*intersample, 1, false, 1000, 0.1);
     check(std::abs(intersample->reading().truePeak + 20) < .1, "rolling peak releases earlier loud signal");
+    const double held = intersample->reading().truePeakMax;
+    check(held >= initialMax && held > intersample->reading().truePeak + 20, "MAX holds when current peak falls, including transition overs");
+    tone(*intersample, 1, true);
+    check(intersample->reading().truePeakMax == held, "MAX survives mute");
+    for (int i = 0; i < 17; ++i) intersample->capture(planes, 4096);
+    intersample->process();
+    check(intersample->reading().dropped > 0 && intersample->reading().truePeakMax == held, "MAX survives queue-loss recovery");
+    intersample->reset(); intersample->process();
+    check(std::isnan(intersample->reading().truePeakMax), "manual reset clears MAX");
+    tone(*intersample, 1, false, 1000, .1);
+    check(intersample->reading().truePeakMax < -19, "MAX starts a new history after reset");
     auto startup = std::make_unique<lufs::Meter>(48000, 2);
     std::vector<float> first(480, .1f); const float* startPlanes[] = {first.data(), first.data()};
     startup->capture(startPlanes, first.size()); startup->process();
@@ -74,7 +87,12 @@ int main() {
     check(lufs::true_peak_level(0, true) == lufs::TargetLevel::Near, "true peak zero is yellow");
     check(lufs::true_peak_level(.01, true) == lufs::TargetLevel::Over, "true peak above zero is red");
     check(lufs::true_peak_level(1, false) == lufs::TargetLevel::Unavailable, "stale peak does not warn");
-    std::cout << "PASS: True Peak intersample/gain/window/startup/reset/silence/thresholds; reference tone, gain, mono, mute, reset, chunking, overflow, PCM preservation, NaN\n";
+    check(lufs::true_peak_level(-10, true, -12) == lufs::TargetLevel::Near, "custom warning changes color");
+    check(lufs::true_peak_level(-12.01, true, -12) == lufs::TargetLevel::Below, "custom warning lower boundary");
+    check(lufs::true_peak_level(-12, true, -12) == lufs::TargetLevel::Near, "custom warning exact boundary");
+    check(lufs::true_peak_level(.01, true, -12) == lufs::TargetLevel::Over, "red remains above zero");
+    check(lufs::peak_warning(12) == 0 && lufs::peak_warning(-80) == -60 && lufs::peak_warning(lufs::unavailable()) == -6, "warning sanitization");
+    std::cout << "PASS: MAX hold/mute/loss/reset, configurable warning; True Peak intersample/gain/window/startup/reset/silence/thresholds; reference tone, gain, mono, mute, reset, chunking, overflow, PCM preservation, NaN\n";
     return 0;
   } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

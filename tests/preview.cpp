@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
   QApplication app(argc, argv); lufs::Dock dock; dock.resize(340, 480);
   auto data = [](QString id, QString name, double value, QString note, QString state = "計測中") {
     lufs::RowData row; row.id = id; row.name = name; row.note = note; row.state = state;
-    row.shortTerm = value; row.momentary = value + 0.7; row.integrated = value - 0.5; row.available = std::isfinite(value); row.truePeak = value + 11; row.truePeakAvailable = row.available; return row;
+    row.shortTerm = value; row.momentary = value + 0.7; row.integrated = value - 0.5; row.available = std::isfinite(value); row.truePeak = value + 11; row.truePeakAvailable = row.available; row.truePeakMax = row.truePeak + 1.2; return row;
   };
   std::vector<lufs::RowData> masters = {data("master", QStringLiteral("配信マスター"), -13.4, QStringLiteral("トラック2 · 配信設定から自動選択"))};
   std::vector<lufs::RowData> sources = {

@@ -34,7 +34,7 @@ static QColor barAccent(bool peak, TargetLevel level) {
 }
 class LoudnessBar : public QWidget {
 public:
-  double value = -60, target = -14;
+  double value = -60, target = -14, warning = -6, heldPeak = std::numeric_limits<double>::quiet_NaN();
   bool valid = false;
   bool vertical_ = false;
   bool peak_ = false, compact_ = false;
@@ -49,8 +49,12 @@ public:
       p.setPen(Qt::NoPen); p.setBrush(QColor("#2b3037")); p.drawRoundedRect(track, 2, 2);
       if (valid) {
         const double fraction = std::clamp((value + 60.0) / 60.0, 0.0, 1.0);
-        p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true) : target_level(value, target, true)));
+        p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true, warning) : target_level(value, target, true)));
         p.drawRoundedRect(QRectF(track.x(), track.bottom() - track.height() * fraction, track.width(), track.height() * fraction), 1.5, 1.5);
+      }
+      if (peak_ && std::isfinite(heldPeak)) {
+        const double y = track.bottom() - track.height() * std::clamp((heldPeak + 60.0) / 60.0, 0.0, 1.0);
+        p.setPen(QPen(barAccent(true, true_peak_level(heldPeak, true, warning)), 2)); p.drawLine(QPointF(26, y), QPointF(35, y));
       }
       const double ty = track.bottom() - track.height() * std::clamp((target + 60.0) / 60.0, 0.0, 1.0);
       p.setPen(QPen(QColor("#d1d4d9"), 1)); p.drawLine(QPointF(25, ty), QPointF(36, ty));
@@ -62,8 +66,12 @@ public:
     p.setPen(Qt::NoPen); p.setBrush(QColor("#2b3037")); p.drawRoundedRect(track, 2, 2);
     if (valid) {
       const double fraction = std::clamp((value + 60.0) / 60.0, 0.0, 1.0);
-      p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true) : target_level(value, target, true)));
+      p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true, warning) : target_level(value, target, true)));
       p.drawRoundedRect(QRectF(track.x(), track.y(), track.width() * fraction, track.height()), peak_ ? 1.5 : 2, peak_ ? 1.5 : 2);
+    }
+    if (peak_ && std::isfinite(heldPeak)) {
+      const double x = track.x() + track.width() * std::clamp((heldPeak + 60.0) / 60.0, 0.0, 1.0);
+      p.setPen(QPen(barAccent(true, true_peak_level(heldPeak, true, warning)), 2)); p.drawLine(QPointF(x, 0), QPointF(x, 7));
     }
     const double tx = track.x() + track.width() * std::clamp((target + 60.0) / 60.0, 0.0, 1.0);
     p.setPen(QPen(QColor("#d1d4d9"), 1)); p.drawLine(QPointF(tx, 0), QPointF(tx, 8));
@@ -79,7 +87,7 @@ public:
 };
 class MeterCard : public QFrame {
 public:
-  QLabel *name_, *state_;
+  QLabel *name_, *state_, *peakMax_ = nullptr;
   QLabel *loudnessNumber_ = nullptr, *peakNumber_ = nullptr;
   LoudnessBar *loudnessBar_ = nullptr, *peakBar_ = nullptr;
   bool master_, vertical_;
@@ -108,25 +116,39 @@ public:
       number->setObjectName(vertical ? (master ? "verticalMasterNumber" : "verticalSourceNumber") : (master ? "masterNumber" : "sourceNumber"));
       auto* unit = new QLabel(peak ? "dBTP" : "LUFS"); unit->setObjectName("unit");
       auto* bar = new LoudnessBar(panel, vertical); bar->peak_ = peak; bar->setObjectName(peak ? "truePeakBar" : "lufsBar"); bar->setAccessibleName(peak ? "True Peak" : "LUFS"); if (peak) bar->target = 0;
+      QLabel* maxLabel = nullptr;
+      if (peak || (vertical && both)) {
+        maxLabel = new QLabel(peak ? QStringLiteral("MAX —") : QString(), panel);
+        maxLabel->setObjectName(peak ? "truePeakMax" : "maxSpacer"); maxLabel->setFixedHeight(12);
+        maxLabel->setStyleSheet("font-family:'Segoe UI';font-size:9px;color:#9b92b8;");
+        if (peak) peakMax_ = maxLabel;
+      }
       if (vertical) {
         if (both) number->setStyleSheet("font-size:18px;");
         column->addWidget(bar, 1, Qt::AlignHCenter);
         number->setAlignment(Qt::AlignCenter); number->setFixedHeight(38); column->addWidget(number);
         unit->setAlignment(Qt::AlignCenter); unit->setFixedHeight(11); column->addWidget(unit);
+        if (maxLabel) { maxLabel->setAlignment(Qt::AlignCenter); column->addWidget(maxLabel); }
       } else if (both) {
         if (master) number->setStyleSheet("font-size:32px;");
         auto* line = new QHBoxLayout; line->setSpacing(8);
         unit->setFixedWidth(28); unit->setStyleSheet("padding-bottom:0px;"); line->addWidget(unit);
-        bar->compact_ = true; bar->setFixedHeight(8); line->addWidget(bar, 1);
+        bar->compact_ = true; bar->setFixedHeight(8);
+        if (peak) {
+          auto* trackColumn = new QVBoxLayout; trackColumn->setSpacing(0); trackColumn->addWidget(bar);
+          maxLabel->setAlignment(Qt::AlignRight); trackColumn->addWidget(maxLabel); line->addLayout(trackColumn, 1);
+        } else line->addWidget(bar, 1);
         number->setAlignment(Qt::AlignRight | Qt::AlignVCenter); number->setFixedWidth(master ? 90 : 64); line->addWidget(number);
         column->addLayout(line);
       } else if (!master && !both) {
         // Preserve the compact single-metric source row.
         top->addWidget(number); if (peak) top->addWidget(unit, 0, Qt::AlignBottom); else { unit->setParent(this); unit->hide(); }
         column->addWidget(bar);
+        if (maxLabel) { maxLabel->setAlignment(Qt::AlignRight); column->addWidget(maxLabel); }
       } else {
         auto* numeric = new QHBoxLayout; numeric->setSpacing(5); numeric->addWidget(number); numeric->addWidget(unit, 0, Qt::AlignBottom); numeric->addStretch();
         column->addLayout(numeric); column->addWidget(bar);
+        if (maxLabel) { maxLabel->setAlignment(Qt::AlignRight); column->addWidget(maxLabel); }
       }
       unit->setStyleSheet(peak ? "color:#b4a5dd; padding-bottom:0px;" : "color:#81ada4; padding-bottom:0px;");
       metrics->addWidget(panel, 1);
@@ -136,7 +158,7 @@ public:
     if (showLufs) addMetric(false);
     if (showPeak) addMetric(true);
   }
-  void apply(const RowData& data, int mode) {
+  void apply(const RowData& data, int mode, double warning) {
     name_->setText(data.name);
     const double value = mode == 0 ? data.shortTerm : mode == 1 ? data.momentary : data.integrated;
     auto applyMetric = [&](QLabel* number, LoudnessBar* bar, double reading, bool available, bool peak) {
@@ -144,7 +166,7 @@ public:
       const bool finite = available && std::isfinite(reading);
       const bool silence = available && std::isinf(reading) && reading < 0;
       number->setText(finite ? QString::number(reading, 'f', 1) : silence ? QStringLiteral("−∞") : QStringLiteral("—"));
-      const auto level = peak ? true_peak_level(reading, finite) : target_level(reading, data.target, finite);
+      const auto level = peak ? true_peak_level(reading, finite, warning) : target_level(reading, data.target, finite);
       const QString color = !finite ? "#646c79" : level == TargetLevel::Over || level == TargetLevel::Near ? accent(level).name() : "#e2e5e9";
       const bool both = loudnessNumber_ && peakNumber_;
       int pixels = vertical_ ? (both ? 18 : master_ ? 28 : 20) : master_ ? (both ? 32 : 44) : 22;
@@ -153,13 +175,21 @@ public:
       const int availableWidth = number->width() - 2;
       while (pixels > 6 && availableWidth > 20 && QFontMetricsF(font).horizontalAdvance(number->text()) > availableWidth) font.setPixelSize(--pixels);
       number->setStyleSheet(QString("font-size:%1px;color:%2;").arg(pixels).arg(color));
-      bar->valid = finite; bar->value = reading; bar->target = peak ? 0 : data.target; bar->update();
-      bar->setToolTip(peak ? QStringLiteral("True Peak · 直近約0.4秒の最大値 · −6 dBTPから黄色、0 dBTP超で赤") : QStringLiteral("目標 %1 LUFS · 3 LU手前から黄色、超過で赤").arg(data.target, 0, 'f', 1));
+      bar->valid = finite; bar->value = reading; bar->target = peak ? 0 : data.target; bar->warning = warning; bar->heldPeak = peak ? data.truePeakMax : std::numeric_limits<double>::quiet_NaN(); bar->update();
+      bar->setToolTip(peak ? QStringLiteral("True Peak · 直近約0.4秒の最大値 · %1 dBTPから黄色、0 dBTP超で赤").arg(warning, 0, 'f', 1) : QStringLiteral("目標 %1 LUFS · 3 LU手前から黄色、超過で赤").arg(data.target, 0, 'f', 1));
       return finite || silence;
     };
     const bool lufsValid = applyMetric(loudnessNumber_, loudnessBar_, value, data.available, false);
     const bool peakValid = applyMetric(peakNumber_, peakBar_, data.truePeak, data.truePeakAvailable, true);
     const bool valid = lufsValid || peakValid;
+    if (peakMax_) {
+      const bool held = std::isfinite(data.truePeakMax);
+      peakMax_->setText(held ? QString("MAX %1").arg(data.truePeakMax, 0, 'f', 1) : QStringLiteral("MAX —"));
+      const auto level = true_peak_level(data.truePeakMax, held, warning);
+      const auto color = held ? barAccent(true, level).name() : QString("#646c79");
+      peakMax_->setStyleSheet("font-family:'Segoe UI';font-size:9px;color:" + color + ";");
+      peakMax_->setToolTip(QStringLiteral("True Peak MAX · dBTP · 計測リセットまで保持"));
+    }
     QString state;
     if (!valid) state = data.state == QStringLiteral("ミュート") ? "MUTE" : data.state == QStringLiteral("計測準備中") ? QStringLiteral("準備中") : "—";
     if (master_ && valid) {
@@ -190,7 +220,7 @@ Dock::Dock(QWidget* parent) : QWidget(parent) {
     "QPushButton,QComboBox,QDoubleSpinBox {background:#1b2027; border:1px solid #333b47; border-radius:5px; padding:5px 7px;}"
     "QPushButton:hover {background:#29313b; border-color:#566474;}"
     "QPushButton:pressed {background:#13171c;}"
-    "QPushButton#gear {background:transparent; border:none;} QPushButton#gear:hover {background:#252c35;}"
+    "QPushButton#gear,QPushButton#reset {background:transparent; border:none;} QPushButton#gear:hover,QPushButton#reset:hover {background:#252c35;}"
     "QComboBox QAbstractItemView,QListWidget,QDialog,QMenu {background:#1b2027; color:#d1d5dd;}"
     "QWidget#settingsPage {background:#191e24;} QTabWidget::pane {background:#191e24; border:1px solid #333b47; border-radius:6px;}"
     "QTabBar::tab {background:#14191f; color:#8995a5; padding:7px 14px; border:1px solid #333b47; border-bottom:none;}"
@@ -206,6 +236,16 @@ Dock::Dock(QWidget* parent) : QWidget(parent) {
   header->addWidget(brand); header->addStretch();
   mode_ = new QComboBox(this); mode_->addItems({QStringLiteral("3秒平均"), QStringLiteral("瞬間"), QStringLiteral("全体平均")}); mode_->hide();
   target_ = new QDoubleSpinBox(this); target_->setRange(-60, 0); target_->setDecimals(1); target_->setSingleStep(1); target_->setValue(-14); target_->hide();
+  auto* resetButton = new QPushButton; resetButton->setObjectName("reset"); resetButton->setFixedSize(22, 22);
+  resetButton->setToolTip(QStringLiteral("計測リセット（MAXもクリア）")); resetButton->setAccessibleName(QStringLiteral("計測リセット"));
+  QPixmap resetIcon(20, 20); resetIcon.fill(Qt::transparent); {
+    QPainter p(&resetIcon); p.setRenderHint(QPainter::Antialiasing);
+    p.setPen(QPen(QColor("#929daa"), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.drawArc(QRectF(4, 4, 12, 12), 40 * 16, 280 * 16);
+    p.drawPolyline(QPolygonF{QPointF(15, 3), QPointF(15, 7), QPointF(11, 6)});
+  }
+  resetButton->setIcon(QIcon(resetIcon)); resetButton->setIconSize(QSize(18, 18)); header->addWidget(resetButton);
+  connect(resetButton, &QPushButton::clicked, this, [this] { if (resetClicked) resetClicked(); });
   auto* gear = new QPushButton; gear->setObjectName("gear"); gear->setFixedSize(22, 22); gear->setToolTip(QStringLiteral("設定"));
   QPixmap icon(20, 20); icon.fill(Qt::transparent); { QPainter p(&icon); p.setRenderHint(QPainter::Antialiasing); p.setPen(QPen(QColor("#929daa"), 1.6)); p.drawEllipse(QPointF(10, 10), 5.6, 5.6); p.drawEllipse(QPointF(10, 10), 2.2, 2.2);
     for (int i = 0; i < 8; ++i) { const double a = i * 3.141592653589793 / 4; p.drawLine(QPointF(10 + 6*std::cos(a), 10+6*std::sin(a)), QPointF(10+8.2*std::cos(a), 10+8.2*std::sin(a))); } }
@@ -245,12 +285,17 @@ void Dock::setMetrics(bool lufs, bool truePeak) {
   updateRows(lastMasters_, lastSources_, lastStatus_);
   if (metricsChanged) metricsChanged(lufs, truePeak);
 }
+void Dock::setTruePeakWarning(double value) {
+  value = peak_warning(value); if (value == truePeakWarning_) return;
+  truePeakWarning_ = value; updateRows(lastMasters_, lastSources_, lastStatus_);
+  if (truePeakWarningChanged) truePeakWarningChanged(value);
+}
 void Dock::updateRows(const std::vector<RowData>& masters, const std::vector<RowData>& sources, const QString& status) {
   lastMasters_ = masters; lastSources_ = sources; lastStatus_ = status;
   auto apply = [this](const std::vector<RowData>& data, std::vector<MeterCard*>& cards, QVBoxLayout* layout, bool master) {
     while (cards.size() > data.size()) { auto* card = cards.back(); cards.pop_back(); layout->removeWidget(card); delete card; }
     while (cards.size() < data.size()) { auto* card = new MeterCard(master, this, orientation_ == 1, showLufs_, showTruePeak_); if (master && orientation_) layout->insertWidget(static_cast<int>(cards.size()), card); else layout->addWidget(card); cards.push_back(card); }
-    for (std::size_t i = 0; i < data.size(); ++i) cards[i]->apply(data[i], mode());
+    for (std::size_t i = 0; i < data.size(); ++i) cards[i]->apply(data[i], mode(), truePeakWarning_);
   };
   apply(masters, masterCards_, orientation_ ? sources_ : masters_, true); apply(sources, sourceCards_, sources_, false);
   for (auto* card : masterCards_) card->setToolTip(card->toolTip() + "\n" + status);
@@ -269,10 +314,12 @@ void Dock::selectSources() {
   connect(showLufs, &QCheckBox::toggled, &dialog, updateChecks); connect(showPeak, &QCheckBox::toggled, &dialog, updateChecks); updateChecks();
   auto* mode = new QComboBox; mode->setObjectName("lufsMode"); mode->addItems({QStringLiteral("3秒平均"), QStringLiteral("瞬間（0.4秒）"), QStringLiteral("全体平均")}); mode->setCurrentIndex(this->mode()); form->addRow(QStringLiteral("測定表示"), mode);
   auto* target = new QDoubleSpinBox; target->setObjectName("commonTarget"); target->setRange(-60, 0); target->setDecimals(1); target->setSuffix(" LUFS"); target->setValue(target_->value()); form->addRow(QStringLiteral("共通の目標"), target);
+  auto* peakWarning = new QDoubleSpinBox; peakWarning->setObjectName("truePeakWarning"); peakWarning->setRange(-60, 0); peakWarning->setDecimals(1); peakWarning->setSuffix(" dBTP"); peakWarning->setValue(truePeakWarning_);
+  form->addRow(QStringLiteral("True Peak 黄色"), peakWarning); peakWarning->setEnabled(showPeak->isChecked());
+  connect(showPeak, &QCheckBox::toggled, peakWarning, &QWidget::setEnabled);
   auto* direction = new QComboBox; direction->setObjectName("orientation"); direction->addItems({QStringLiteral("横"), QStringLiteral("縦")}); direction->setCurrentIndex(orientation_); form->addRow(QStringLiteral("メーター"), direction);
   mode->setEnabled(showLufs->isChecked()); target->setEnabled(showLufs->isChecked());
   connect(showLufs, &QCheckBox::toggled, mode, &QWidget::setEnabled); connect(showLufs, &QCheckBox::toggled, target, &QWidget::setEnabled);
-  auto* reset = new QPushButton(QStringLiteral("計測リセット")); form->addRow(QString(), reset); connect(reset, &QPushButton::clicked, this, [this] { if (resetClicked) resetClicked(); });
   tabs->addTab(general, QStringLiteral("表示"));
   auto* sourcePage = new QWidget; sourcePage->setObjectName("settingsPage"); auto* sourceLayout = new QVBoxLayout(sourcePage); sourceLayout->setContentsMargins(12, 12, 12, 12);
   auto* list = new QListWidget; list->setDragDropMode(QAbstractItemView::InternalMove); list->setToolTip(QStringLiteral("チェックで表示、ドラッグで並べ替え")); sourceLayout->addWidget(list);
@@ -306,7 +353,7 @@ void Dock::selectSources() {
   auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel); layout->addWidget(buttons);
   connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept); connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
   if (dialog.exec() == QDialog::Accepted) {
-    setMode(mode->currentIndex()); setTarget(target->value()); setOrientation(direction->currentIndex()); setMetrics(showLufs->isChecked(), showPeak->isChecked());
+    setTruePeakWarning(peakWarning->value()); setMode(mode->currentIndex()); setTarget(target->value()); setOrientation(direction->currentIndex()); setMetrics(showLufs->isChecked(), showPeak->isChecked());
     QStringList selected;
     for (int i = 0; i < list->count(); ++i) {
       auto* item = list->item(i); const QString id = item->data(Qt::UserRole).toString(); const bool master = item->data(Qt::UserRole + 3).toBool();

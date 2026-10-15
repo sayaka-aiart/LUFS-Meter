@@ -14,7 +14,7 @@ inline double unavailable() { return std::numeric_limits<double>::quiet_NaN(); }
 std::uint64_t now_ms();
 struct Reading {
   double momentary = unavailable(), shortTerm = unavailable(), integrated = unavailable();
-  double truePeak = unavailable();
+  double truePeak = unavailable(), truePeakMax = unavailable();
   std::uint64_t frames = 0, lastMs = 0, dropped = 0, resets = 0;
   bool muted = false, error = false;
 };
@@ -31,7 +31,7 @@ public:
   Reading reading() const;
 private:
   struct Block { std::uint32_t frames = 0; bool muted = false; std::uint64_t ms = 0; std::array<float, BlockFrames * MaxChannels> pcm{}; };
-  void restart();
+  void restart(bool clearPeakMax = false);
   unsigned rate_, channels_;
   ebur128_state* state_ = nullptr;
   std::array<Block, QueueBlocks> queue_{};

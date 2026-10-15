@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-10-15
+
+- Put the measurement reset button immediately to the left of the settings gear.
+- Add True Peak MAX hold values and bar markers for each source and stream master.
+- Keep MAX through mute, inactivity and queue-loss recovery; clear on measurement reset.
+- Configure and save the True Peak yellow threshold (-60 to 0 dBTP, default -6).
+- Apply the threshold consistently to current readings, bars and MAX; red remains above 0 dBTP.
+
 ## 0.2.1 — 2026-10-15
 
 - Make True Peak numbers about 12.5% smaller than LUFS in both orientations.

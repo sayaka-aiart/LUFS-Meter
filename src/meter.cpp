@@ -10,10 +10,12 @@ std::uint64_t now_ms() {
 }
 Meter::Meter(unsigned rate, unsigned channels) : rate_(rate), channels_(channels) { restart(); }
 Meter::~Meter() { if (state_) ebur128_destroy(&state_); }
-void Meter::restart() {
+void Meter::restart(bool clearPeakMax) {
   if (state_) ebur128_destroy(&state_);
   const auto resets = current_.resets + 1;
+  const auto heldPeak = current_.truePeakMax;
   current_ = Reading{};
+  if (!clearPeakMax) current_.truePeakMax = heldPeak;
   peaks_.clear();
   current_.resets = resets;
   if (rate_ < 8000 || rate_ > 384000 || channels_ < 1 || channels_ > MaxChannels) {
@@ -51,7 +53,7 @@ bool Meter::capture(const float* const* planes, std::size_t frames, float gain, 
 std::size_t Meter::process() {
   if (resetRequested_.exchange(false, std::memory_order_acq_rel)) {
     read_.store(write_.load(std::memory_order_acquire), std::memory_order_release);
-    previousMs_ = 0; restart();
+    previousMs_ = 0; restart(true);
   }
   const auto drops = dropped_.load(std::memory_order_acquire);
   if (drops != seenDrops_) { restart(); seenDrops_ = drops; previousMs_ = 0; }
@@ -77,6 +79,8 @@ std::size_t Meter::process() {
       const auto window = static_cast<std::uint64_t>(rate_) * 4 / 10;
       while (!peaks_.empty() && current_.frames - peaks_.front().first >= window) peaks_.pop_front();
       current_.truePeak = peaks_.front().second > 0 ? 20 * std::log10(peaks_.front().second) : -std::numeric_limits<double>::infinity();
+      const double blockPeak = peak > 0 ? 20 * std::log10(peak) : -std::numeric_limits<double>::infinity();
+      if (std::isnan(current_.truePeakMax) || blockPeak > current_.truePeakMax) current_.truePeakMax = blockPeak;
     } else current_.error = true;
     ++r; ++processed;
     read_.store(r, std::memory_order_release);
