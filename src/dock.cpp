@@ -148,6 +148,7 @@ public:
       const QString color = !finite ? "#646c79" : level == TargetLevel::Over || level == TargetLevel::Near ? accent(level).name() : "#e2e5e9";
       const bool both = loudnessNumber_ && peakNumber_;
       int pixels = vertical_ ? (both ? 18 : master_ ? 28 : 20) : master_ ? (both ? 32 : 44) : 22;
+      if (peak) pixels = static_cast<int>(std::lround(pixels * 0.875));
       QFont font = number->font(); font.setPixelSize(pixels);
       const int availableWidth = number->width() - 2;
       while (pixels > 6 && availableWidth > 20 && QFontMetricsF(font).horizontalAdvance(number->text()) > availableWidth) font.setPixelSize(--pixels);

@@ -1,9 +1,10 @@
-# LUFS Meter 0.2.0
+# LUFS Meter 0.2.1
 
-ソース別と配信マスターにTrue Peak表示を追加しました。Windows x64 / OBS Studio 32向けです。
+True Peakの数値をLUFSより少し小さくして、見分けやすくしました。Windows x64 / OBS Studio 32向けです。
 
 ## 変更点
 
+- True Peakの数値をLUFSの約87.5%のサイズに調整しました。横・縦表示の両方に適用します。
 - 設定の表示項目で **LUFSのみ / LUFS＋True Peak / True Peakのみ** を選択できます。
 - 横メーターは上下、縦メーターは左右に配置。LUFSは太い青緑、True Peakは細い青紫で区別できます。
 - 表示設定は次回起動時にも保存します。

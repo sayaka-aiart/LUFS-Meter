@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 — 2026-10-15
+
+- Make True Peak numbers about 12.5% smaller than LUFS in both orientations.
+
 ## 0.2.0 — 2026-10-15
 
 - Add per-source and stream-master True Peak metering in dBTP with libebur128.
