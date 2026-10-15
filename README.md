@@ -1,5 +1,7 @@
 # LUFS Meter
 
+日本語 · [English](README_EN.md)
+
 OBSの音声ソースと配信マスターを表示する、コンパクトなLUFS / True Peakメーターです。
 Windows x64 / OBS Studio 32向け。別の音声プラグインは必要ありません。
 

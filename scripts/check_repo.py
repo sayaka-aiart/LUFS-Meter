@@ -7,7 +7,7 @@ import subprocess
 root = Path(__file__).resolve().parent.parent
 raw = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=root)
 names = sorted(set(p.decode("utf-8") for p in raw.split(b"\0") if p))
-required = {"README.md", "README_JA.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "CMakeLists.txt", ".github/workflows/build.yml", "docs/images/horizontal.png", "docs/images/vertical.png"}
+required = {"README.md", "README_JA.md", "README_EN.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "CMakeLists.txt", ".github/workflows/build.yml", "docs/images/horizontal.png", "docs/images/vertical.png"}
 assert required.issubset(names), f"Missing public files: {required - set(names)}"
 patterns = [
     re.compile(r"(?:C:[/\\]Users[/\\]|/home/)[A-Za-z0-9_.-]+", re.I),

@@ -1,5 +1,7 @@
 # LUFS Meter 0.4.0
 
+[日本語ホーム](README.md) · [English](README_EN.md)
+
 LAAを必要としない、Windows x64の独立OBSプラグインです。
 配信マスターを上段、選んだ音声ソースを下段に表示します。
 計測にはlibebur128 1.2.6を静的に組み込んでいます。
