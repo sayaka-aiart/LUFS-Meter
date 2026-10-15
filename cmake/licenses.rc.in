@@ -1,0 +1,4 @@
+// Keep the complete notices in the binary when it is copied on its own.
+LUFS_GPL_LICENSE RCDATA "@CMAKE_CURRENT_SOURCE_DIR@/LICENSE"
+LUFS_LIBEBUR128_LICENSE RCDATA "@CMAKE_CURRENT_SOURCE_DIR@/third_party/libebur128/COPYING"
+LUFS_QUEUE_LICENSE RCDATA "@CMAKE_CURRENT_BINARY_DIR@/queue-license.txt"

@@ -1,5 +1,15 @@
 # Verification
 
+## Minimal install package 0.1.1 — 2026-10-15
+
+- Windows Release build, measurement contract and widget contract passed.
+- The new DLL loaded in isolated OBS 32.2.2 and exited with code 0.
+  Voice, BGM and Track 2 measured -16.47, -17.13 and -13.78 LUFS;
+  Track-1-only and muted sources were excluded from the master.
+- Packaging checks the full embedded GPL/MIT/BSD notices against source files,
+  ZIP integrity and the exact two-file install layout: obs-lufs-meter.dll
+  and 導入方法.txt. Matching source/licenses are packaged in a separate ZIP.
+
 ## Initial preview — 2026-10-14
 
 - Windows x64 Release build and measurement contract passed.

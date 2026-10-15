@@ -1,25 +1,26 @@
-# LUFS Meter 0.1.0
+# LUFS Meter 0.1.1
 
-Initial public preview for Windows x64 / OBS Studio 32.
+配布ZIPをコンパクトに整理しました。Windows x64 / OBS Studio 32向けです。
 
-## Download
+## ダウンロード
 
-Use **LUFS-Meter-Windows-x64.zip** in Assets. It contains the plugin DLL,
-installation instructions, license notices and corresponding source.
-SHA256SUMS.txt verifies the download.
+**LUFS-Meter-Windows-x64.zip** には次の2点だけが入っています。
 
-## Features
+- obs-lufs-meter.dll
+- 導入方法.txt
 
-- Independent source and stream-master LUFS metering with libebur128.
-- Momentary / 3-second / Integrated display, configurable targets and source order.
-- Compact horizontal or vertical meters; settings are grouped under the gear.
+対応ソースとライセンス全文は **LUFS-Meter-Source-and-Licenses.zip** から取得できます。
+DLLにもライセンス全文・著作権表示を収録しています。SHA256SUMS.txtで両ZIPを検証できます。
 
-## Installation
+## 導入方法
 
-Close OBS, extract the ZIP, and copy obs-plugins/64bit/obs-lufs-meter.dll
-to the matching folder in your OBS installation. Open **Docks → LUFS Meter**.
-OBS and Qt runtime DLLs are not included.
+1. OBSを終了します。
+2. ZIPを展開し、obs-lufs-meter.dll をOBSの obs-plugins/64bit/ へコピーします。
+   通常は C:/Program Files/obs-studio/obs-plugins/64bit/ です。
+3. OBSを起動し、**ドック → LUFS Meter** を開きます。
 
-This is an early preview. Local OBS 32.2.2 source/mix checks and widget tests
-passed; streaming to an actual platform and long-duration stability remain
-unverified. See the repository's verification document for details.
+右上の歯車でソース・目標値・測定時間・縦横表示を設定します。
+初期値は3秒平均、目標−14 LUFSです。
+
+初期の試作版です。ローカルOBSでのソース・マスター計測とUIテストを実施しています。
+配信サービスへの実接続や長時間稼働は未検証です。

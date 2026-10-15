@@ -9,7 +9,9 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 [リリース一覧](https://github.com/sayaka-aiart/LUFS-Meter/releases) ·
 [詳しい使い方](README_JA.md)
 
-> v0.1.0は初期の試作版です。配信停止中のOBSミックスによる実測を確認しています。
+配布ZIPの中身は **obs-lufs-meter.dll** と **導入方法.txt** の2点です。
+
+> v0.1.1は初期の試作版です。配信停止中のOBSミックスによる実測を確認しています。
 > 配信サービスへの実接続や長時間稼働は、まだ検証していません。
 
 | 横表示 | 縦表示 |
@@ -29,7 +31,7 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 ## インストール
 
 1. 上のボタンから **LUFS-Meter-Windows-x64.zip** をダウンロードして展開します。
-2. OBSを終了し、展開した **obs-plugins/64bit/obs-lufs-meter.dll** を、
+2. OBSを終了し、展開した **obs-lufs-meter.dll** を、
    OBSインストール先の **obs-plugins/64bit/** へコピーします。
 3. OBSを起動し、**ドック → LUFS Meter** を開きます。
 
@@ -63,6 +65,7 @@ GitHubが自動生成する「Source code」のZIPは開発用です。
 
 独自コードは **GPL-2.0-or-later**。libebur128はMIT、
 同梱のqueue.hはBSD-3-Clauseです。
-配布ZIPには対応ソースとライセンス文も含めています。
+ライセンス全文と著作権表示はDLL内にも収録しています。
+対応ソースとライセンスは[別ZIPでダウンロード](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)できます。
 
 [LICENSE](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)

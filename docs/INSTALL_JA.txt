@@ -1,0 +1,21 @@
+LUFS Meter @VERSION@ / Windows x64 / OBS Studio 32
+
+【導入方法】
+1. OBSを終了します。
+2. obs-lufs-meter.dll を次のフォルダーへコピーします。
+   C:\Program Files\obs-studio\obs-plugins\64bit\
+   ※別の場所にOBSを入れている場合は、その中の obs-plugins\64bit\ です。
+3. OBSを起動し、「ドック」→「LUFS Meter」を開きます。
+
+右上の歯車でソース・目標値・測定時間・縦横表示を変更できます。
+初期値は3秒平均、目標 -14 LUFSです。
+更新はOBSを終了してDLLを上書き、削除はOBSを終了してDLLを削除します。
+
+【ソース・ライセンス】
+GPL-2.0-or-later / libebur128: MIT / queue.h: BSD-3-Clause
+ライセンス全文と著作権表示はDLL内のRCDATAリソースにも収録しています。
+対応ソースとライセンス全文は同じバージョンの公開リリースから取得できます。
+https://github.com/sayaka-aiart/LUFS-Meter/releases/download/v@VERSION@/LUFS-Meter-Source-and-Licenses.zip
+
+使い方・更新情報:
+https://github.com/sayaka-aiart/LUFS-Meter

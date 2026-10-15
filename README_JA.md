@@ -1,4 +1,4 @@
-# LUFS Meter 0.1.0 試作版
+# LUFS Meter 0.1.1 試作版
 
 LAAを必要としない、Windows x64の独立OBSプラグインです。
 配信マスターを上段、選んだ音声ソースを下段に表示します。
@@ -7,8 +7,9 @@ LAAを必要としない、Windows x64の独立OBSプラグインです。
 ## 導入
 
 1. OBSを終了してください。
-2. dist/obs-lufs-meter-0.1.0-windows-x64/obs-plugins/64bit/obs-lufs-meter.dll
+2. [配布ZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)を展開し、obs-lufs-meter.dll
    をOBSのobs-plugins/64bitへコピーします。
+   通常は C:/Program Files/obs-studio/obs-plugins/64bit/ です。
 3. OBSを起動し、ドック → LUFS Meterを開きます。
 
 通常のOBSへのコピーは自動では実施していません。
@@ -97,5 +98,6 @@ ctest --test-dir build-core -C Release --output-on-failure
 ## ライセンス
 
 プラグイン独自コードはGPL-2.0-or-later。GPL全文はLICENSE。
-libebur128はMIT。THIRD_PARTY_NOTICES.mdとlicenses/を確認してください。
-販売・再配布時にも対応ソースとライセンス通知を提供する構成です。
+libebur128はMIT、queue.hはBSD-3-Clause。著作権表示とライセンス全文はDLL内にも収録しています。
+[対応ソース・ライセンスZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)を配布版と同じリリースから取得できます。
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)も参照してください。

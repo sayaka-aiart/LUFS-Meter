@@ -7,7 +7,8 @@ and Visual Studio 2019/2022 C++ Build Tools with a Windows SDK.
 
 Run in the repository root:
 
-When building from the release ZIP, use its source/ directory as the repository root.
+When building from LUFS-Meter-Source-and-Licenses.zip, use the extracted
+LUFS-Meter-VERSION-source/ directory as the repository root.
 
     .\scripts\fetch_obs.ps1
     .\scripts\fetch_qt.ps1
@@ -30,8 +31,13 @@ The plugin uses the Qt libraries already provided by OBS.
 Outputs:
 
 - build/Release/obs-lufs-meter.dll
-- dist/obs-lufs-meter-0.1.0-windows-x64/
-- dist/LUFS-Meter-Windows-x64.zip and dist/SHA256SUMS.txt
+- dist/obs-lufs-meter-VERSION-windows-x64/
+- dist/LUFS-Meter-Windows-x64.zip (DLL and Japanese installation instructions only)
+- dist/LUFS-Meter-Source-and-Licenses.zip
+- dist/SHA256SUMS.txt
+
+The Windows DLL embeds the full GPL, MIT and BSD notices as RCDATA resources.
+Packaging verifies their contents before creating either ZIP.
 
 CI uses -QtPlatform minimal for the widget contract test.
 This verifies controls and layout changes; it is not an OBS-host or live-stream test.

@@ -70,14 +70,14 @@
           "run": "./scripts/build.ps1 -QtPlatform minimal"
         },
         {
-          "name": "Package DLL, source and licenses",
+          "name": "Package minimal install ZIP and separate source ZIP",
           "run": "python scripts/package.py\nif ($LASTEXITCODE) { throw 'Packaging failed' }"
         },
         {
           "uses": "actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
           "with": {
             "name": "windows-x64",
-            "path": "dist/LUFS-Meter-Windows-x64.zip\ndist/SHA256SUMS.txt",
+            "path": "dist/LUFS-Meter-Windows-x64.zip\ndist/LUFS-Meter-Source-and-Licenses.zip\ndist/SHA256SUMS.txt",
             "if-no-files-found": "error",
             "retention-days": 14
           }
@@ -115,7 +115,7 @@
             "GH_REPO": "${{ github.repository }}",
             "TAG": "${{ github.ref_name }}"
           },
-          "run": "VERSION=$(python3 -c 'import re; print(re.search(r\"project\\(obs_lufs_meter VERSION ([0-9.]+)\", open(\"CMakeLists.txt\").read()).group(1))')\ntest \"$TAG\" = \"v$VERSION\"\nif gh release view \"$TAG\" >/dev/null 2>&1; then\n  echo \"Release already exists; keeping its published assets unchanged.\"\nelse\n  gh release create \"$TAG\" dist/LUFS-Meter-Windows-x64.zip dist/SHA256SUMS.txt --verify-tag --title \"LUFS Meter $TAG\" --notes-file docs/RELEASE_NOTES.md\nfi"
+          "run": "VERSION=$(python3 -c 'import re; print(re.search(r\"project\\(obs_lufs_meter VERSION ([0-9.]+)\", open(\"CMakeLists.txt\").read()).group(1))')\ntest \"$TAG\" = \"v$VERSION\"\nif gh release view \"$TAG\" >/dev/null 2>&1; then\n  echo \"Release already exists; keeping its published assets unchanged.\"\nelse\n  gh release create \"$TAG\" dist/LUFS-Meter-Windows-x64.zip dist/LUFS-Meter-Source-and-Licenses.zip dist/SHA256SUMS.txt --verify-tag --title \"LUFS Meter $TAG\" --notes-file docs/RELEASE_NOTES.md\nfi"
         }
       ]
     }
