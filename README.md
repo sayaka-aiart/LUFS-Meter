@@ -13,11 +13,11 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 
 | 横表示 | 縦表示 |
 | --- | --- |
-| ![横表示](docs/images/horizontal.png) | ![縦表示](docs/images/vertical.png) |
+| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/vertical.png) |
 
-![True Peakのみ](docs/images/truepeak.png)
+![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.2.1/docs/images/truepeak.png)
 
-画像は検証用OBSでテスト音を計測した画面です。
+画像はv0.2.1の検証用OBSでテスト音を計測した画面です。
 
 ## できること
 
