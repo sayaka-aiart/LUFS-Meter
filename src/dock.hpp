@@ -2,6 +2,7 @@
 #include <QWidget>
 #include <QStringList>
 #include <functional>
+#include <limits>
 #include <vector>
 class QComboBox;
 class QDoubleSpinBox;
@@ -13,6 +14,8 @@ struct RowData {
   double momentary = 0, shortTerm = 0, integrated = 0;
   bool available = false;
   double target = -14.0;
+  double truePeak = std::numeric_limits<double>::quiet_NaN();
+  bool truePeakAvailable = false;
 };
 struct SourceOption { QString id, name; bool checked = true; double target = -14; bool customTarget = false; };
 class MeterCard;
@@ -25,6 +28,9 @@ public:
   void setTarget(double value);
   void setOrientation(int value);
   int orientation() const { return orientation_; }
+  void setMetrics(bool lufs, bool truePeak);
+  bool showsLufs() const { return showLufs_; }
+  bool showsTruePeak() const { return showTruePeak_; }
   void setSourceOptions(std::vector<SourceOption> options) { options_ = std::move(options); }
   void setMasterOptions(std::vector<SourceOption> options) { masterOptions_ = std::move(options); }
   std::function<void(const QStringList&)> selectionChanged;
@@ -33,7 +39,9 @@ public:
   std::function<void(double)> targetChanged;
   std::function<void(const QString&, double)> rowTargetChanged;
   std::function<void(int)> orientationChanged;
+  std::function<void(bool, bool)> metricsChanged;
 private:
+  void clearCards();
   void selectSources();
   QComboBox* mode_;
   QDoubleSpinBox* target_;
@@ -45,5 +53,8 @@ private:
   std::vector<SourceOption> options_;
   std::vector<SourceOption> masterOptions_;
   int orientation_ = 0;
+  bool showLufs_ = true, showTruePeak_ = false;
+  std::vector<RowData> lastMasters_, lastSources_;
+  QString lastStatus_;
 };
 }

@@ -1,5 +1,20 @@
 # Verification
 
+## True Peak and metric selection 0.2.0 — 2026-10-15
+
+- Measurement and widget contracts passed with the new binary.
+- The 12 kHz phase-offset test at 48 kHz has sample peaks below 0 dBFS
+  and reconstructed True Peak above +1.4 dBTP; oversampling detects the overs.
+- Reference dBTP, fader gain, mute/reset, rolling peak release, startup before
+  LUFS warmup, values below the LUFS absolute gate and -6/0 boundaries passed.
+- All three display combinations passed in both orientations, including cancel,
+  the at-least-one-metric rule, stale/muted values and above/below vs left/right layout.
+- Isolated OBS 32.2.2 loaded both-metric horizontal/vertical, True-Peak-only and
+  LUFS-only displays. Voice True Peak was -16.48 dBTP, matching amplitude 0.15.
+  Master mix routing and muted-source exclusion also passed; all checks exited 0.
+- The screenshots in docs/images/ show the native OBS measurements; the settings
+  image is a standalone widget preview. These checks do not connect a streaming service.
+
 ## Minimal install package 0.1.1 — 2026-10-15
 
 - Windows Release build, measurement contract and widget contract passed.

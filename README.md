@@ -1,6 +1,6 @@
 # LUFS Meter
 
-OBSの音声ソースと配信マスターを表示する、コンパクトなLUFSメーターです。
+OBSの音声ソースと配信マスターを表示する、コンパクトなLUFS / True Peakメーターです。
 Windows x64 / OBS Studio 32向け。別の音声プラグインは必要ありません。
 
 [![Windows x64をダウンロード](https://img.shields.io/badge/Download-Windows_x64-81ada4?style=for-the-badge)](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)
@@ -15,13 +15,18 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 | --- | --- |
 | ![横表示](docs/images/horizontal.png) | ![縦表示](docs/images/vertical.png) |
 
+![True Peakのみ](docs/images/truepeak.png)
+
 画像は検証用OBSでテスト音を計測した画面です。
 
 ## できること
 
 - 配信トラックのマスターと、選んだ音声ソースを個別に計測。
-- 瞬間 / 3秒平均 / 全体平均のLUFS表示。
-- 目標値は既定 **−14 LUFS**。3 LU手前から黄色、目標を超えると赤。
+- 瞬間 / 3秒平均 / 全体平均のLUFSと、True Peak（dBTP）を表示。
+- 設定で **LUFSのみ / LUFS＋True Peak / True Peakのみ** を切り替え。
+- 両方表示では横メーターは上下、縦メーターは左右に配置。青緑の太いバーがLUFS、青紫の細いバーがTrue Peak。
+- LUFSの目標値は既定 **−14 LUFS**。3 LU手前から黄色、目標を超えると赤。
+- True Peakは **−6 dBTPから黄色、0 dBTPを超えると赤**。
 - ソースごとの目標、表示選択、並べ替え、横・縦表示を右上の歯車で設定。
 - libebur128を内蔵。音声を変更しない計測専用プラグイン。
 

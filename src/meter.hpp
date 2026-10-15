@@ -2,8 +2,10 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <limits>
 #include <mutex>
+#include <utility>
 #include "ebur128.h"
 
 namespace lufs {
@@ -12,6 +14,7 @@ inline double unavailable() { return std::numeric_limits<double>::quiet_NaN(); }
 std::uint64_t now_ms();
 struct Reading {
   double momentary = unavailable(), shortTerm = unavailable(), integrated = unavailable();
+  double truePeak = unavailable();
   std::uint64_t frames = 0, lastMs = 0, dropped = 0, resets = 0;
   bool muted = false, error = false;
 };
@@ -39,5 +42,7 @@ private:
   std::uint64_t seenDrops_ = 0, previousMs_ = 0;
   mutable std::mutex snapshotMutex_;
   Reading snapshot_, current_;
+  // Monotonic queue of block maxima over the most recent 400 ms of PCM.
+  std::deque<std::pair<std::uint64_t, double>> peaks_;
 };
 }

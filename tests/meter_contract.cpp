@@ -7,11 +7,11 @@
 #include <stdexcept>
 #include <vector>
 void check(bool ok, const char* what) { if (!ok) throw std::runtime_error(what); }
-void tone(lufs::Meter& meter, float gain = 1, bool mute = false, double frequency = 1000) {
+void tone(lufs::Meter& meter, float gain = 1, bool mute = false, double frequency = 1000, double amplitude = 0.1, double phase = 0) {
   std::vector<float> a(480), b(480);
   const float* planes[] = {a.data(), b.data()};
   for (int block = 0; block < 600; ++block) {
-    for (int i = 0; i < 480; ++i) a[i] = b[i] = static_cast<float>(0.1 * std::sin(2 * 3.141592653589793 * frequency * (block * 480 + i) / 48000));
+    for (int i = 0; i < 480; ++i) a[i] = b[i] = static_cast<float>(amplitude * std::sin(2 * 3.141592653589793 * frequency * (block * 480 + i) / 48000 + phase));
     const auto original = a;
     check(meter.capture(planes, 480, gain, mute), "capture");
     check(a == original, "input PCM mutated");
@@ -38,11 +38,15 @@ int main() {
     auto a = full->reading(), b = half->reading();
     check(std::abs(a.shortTerm + 20.0) < 0.15, "stereo reference tone LUFS");
     check(std::abs((b.shortTerm - a.shortTerm) + 6.0206) < 0.02, "fader gain LUFS delta");
+    check(std::abs(a.truePeak + 20.0) < 0.1, "true peak reference tone in dBTP");
+    check(std::abs((b.truePeak - a.truePeak) + 6.0206) < 0.02, "true peak follows fader gain");
     check(std::abs(a.integrated - a.shortTerm) < 0.15, "integrated agreement");
     tone(*half, 1, true); b = half->reading();
     check(b.muted && (!std::isfinite(b.shortTerm) || b.shortTerm < -70), "mute is silent");
+    check(!std::isfinite(b.truePeak) || b.truePeak < -100, "muting clears rolling true peak");
     full->reset(); full->process(); a = full->reading();
     check(a.frames == 0 && !std::isfinite(a.integrated), "reset clears integrated history");
+    check(std::isnan(a.truePeak), "reset clears true peak window");
     auto mono = std::make_unique<lufs::Meter>(48000, 1); tone(*mono);
     check(std::abs(mono->reading().shortTerm + 23.01) < 0.15, "mono reference mapping");
     std::vector<float> large(4096, .1f); const float* planes[] = {large.data(), large.data()};
@@ -52,7 +56,25 @@ int main() {
     check(full->reading().dropped == 1, "queue loss reported");
     large[0] = std::numeric_limits<float>::quiet_NaN();
     full->capture(planes, 4096); full->process(); check(!full->reading().error, "non-finite sanitized");
-    std::cout << "PASS: reference tone, gain, mono, mute, reset, chunking, overflow, PCM preservation, NaN\n";
+    auto intersample = std::make_unique<lufs::Meter>(48000, 2);
+    tone(*intersample, 1, false, 12000, 1.2, 3.141592653589793 / 4);
+    const double samplePeak = 20 * std::log10(1.2 / std::sqrt(2.0));
+    const auto tp = intersample->reading().truePeak;
+    check(samplePeak < 0 && tp > 1.4 && tp < 1.8, "intersample peak above 0 despite samples below 0 dBFS");
+    tone(*intersample, 1, false, 1000, 0.1);
+    check(std::abs(intersample->reading().truePeak + 20) < .1, "rolling peak releases earlier loud signal");
+    auto startup = std::make_unique<lufs::Meter>(48000, 2);
+    std::vector<float> first(480, .1f); const float* startPlanes[] = {first.data(), first.data()};
+    startup->capture(startPlanes, first.size()); startup->process();
+    check(std::isfinite(startup->reading().truePeak) && !std::isfinite(startup->reading().shortTerm), "true peak works before LUFS warmup");
+    tone(*startup, 1, false, 1000, 0.00001);
+    check(std::abs(startup->reading().truePeak + 100) < .1, "true peak measures below LUFS absolute gate");
+    check(lufs::true_peak_level(-6.01, true) == lufs::TargetLevel::Below, "true peak below warning");
+    check(lufs::true_peak_level(-6, true) == lufs::TargetLevel::Near, "true peak yellow starts at minus 6");
+    check(lufs::true_peak_level(0, true) == lufs::TargetLevel::Near, "true peak zero is yellow");
+    check(lufs::true_peak_level(.01, true) == lufs::TargetLevel::Over, "true peak above zero is red");
+    check(lufs::true_peak_level(1, false) == lufs::TargetLevel::Unavailable, "stale peak does not warn");
+    std::cout << "PASS: True Peak intersample/gain/window/startup/reset/silence/thresholds; reference tone, gain, mono, mute, reset, chunking, overflow, PCM preservation, NaN\n";
     return 0;
   } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

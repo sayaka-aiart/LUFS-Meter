@@ -55,8 +55,10 @@ The core test can run on Windows or Linux. The OBS plugin is currently Windows-o
 After a normal plugin build:
 
     python scripts/prepare_qa.py --obs-root C:/dev/obs-portable
-    .\scripts\run_qa.ps1 -Orientation horizontal
-    .\scripts\run_qa.ps1 -Orientation vertical
+    .\scripts\run_qa.ps1 -Orientation horizontal -Metrics both
+    .\scripts\run_qa.ps1 -Orientation vertical -Metrics both
+    .\scripts\run_qa.ps1 -Orientation horizontal -Metrics truepeak
+    .\scripts\run_qa.ps1 -Orientation horizontal -Metrics lufs
 
 These scripts create a disposable runtime and synthetic tones under ignored qa/,
 use its own profile, and collect measurements/screenshots. They do not start

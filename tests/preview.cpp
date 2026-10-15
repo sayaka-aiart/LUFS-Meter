@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
   QApplication app(argc, argv); lufs::Dock dock; dock.resize(340, 480);
   auto data = [](QString id, QString name, double value, QString note, QString state = "計測中") {
     lufs::RowData row; row.id = id; row.name = name; row.note = note; row.state = state;
-    row.shortTerm = value; row.momentary = value + 0.7; row.integrated = value - 0.5; row.available = std::isfinite(value); return row;
+    row.shortTerm = value; row.momentary = value + 0.7; row.integrated = value - 0.5; row.available = std::isfinite(value); row.truePeak = value + 11; row.truePeakAvailable = row.available; return row;
   };
   std::vector<lufs::RowData> masters = {data("master", QStringLiteral("配信マスター"), -13.4, QStringLiteral("トラック2 · 配信設定から自動選択"))};
   std::vector<lufs::RowData> sources = {
@@ -25,7 +25,10 @@ int main(int argc, char** argv) {
   dock.targetChanged = [&](double value) { for (auto& r : masters) r.target = value; for (auto& r : sources) r.target = value; redraw(); };
   dock.rowTargetChanged = [&](const QString& id, double value) { for (auto& r : masters) if (r.id == id) r.target = value; for (auto& r : sources) if (r.id == id) r.target = value; redraw(); };
   dock.orientationChanged = [&](int) { redraw(); };
-  if (argc > 2 && QString::fromLocal8Bit(argv[2]) == "vertical") { dock.setOrientation(1); dock.resize(480, 400); }
+  dock.metricsChanged = [&](bool, bool) { redraw(); };
+  const QString variant = argc > 3 ? QString::fromLocal8Bit(argv[3]) : "lufs";
+  dock.setMetrics(variant != "truepeak", variant != "lufs");
+  if (argc > 2 && QString::fromLocal8Bit(argv[2]) == "vertical") { dock.setOrientation(1); dock.resize(variant == "both" ? 660 : 480, 400); }
   redraw(); dock.show();
   if (argc > 1) { const QString path = QString::fromLocal8Bit(argv[1]);
     if (argc > 2 && QString::fromLocal8Bit(argv[2]) == "settings") {

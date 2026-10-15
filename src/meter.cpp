@@ -14,11 +14,12 @@ void Meter::restart() {
   if (state_) ebur128_destroy(&state_);
   const auto resets = current_.resets + 1;
   current_ = Reading{};
+  peaks_.clear();
   current_.resets = resets;
   if (rate_ < 8000 || rate_ > 384000 || channels_ < 1 || channels_ > MaxChannels) {
     current_.error = true; return;
   }
-  state_ = ebur128_init(channels_, rate_, EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_HISTOGRAM);
+  state_ = ebur128_init(channels_, rate_, EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_HISTOGRAM | EBUR128_MODE_TRUE_PEAK);
   current_.error = !state_;
   // OBS uses FL, FR, FC, LFE, rear L/R, side L/R. Exclude LFE explicitly.
   if (state_ && channels_ > 2) {
@@ -63,8 +64,20 @@ std::size_t Meter::process() {
     previousMs_ = block.ms;
     current_.muted = block.muted;
     current_.lastMs = block.ms;
-    if (state_ && ebur128_add_frames_float(state_, block.pcm.data(), block.frames) == EBUR128_SUCCESS) current_.frames += block.frames;
-    else current_.error = true;
+    if (state_ && ebur128_add_frames_float(state_, block.pcm.data(), block.frames) == EBUR128_SUCCESS) {
+      current_.frames += block.frames;
+      double peak = 0;
+      for (unsigned channel = 0; channel < channels_; ++channel) {
+        double channelPeak = 0;
+        if (ebur128_prev_true_peak(state_, channel, &channelPeak) != EBUR128_SUCCESS) current_.error = true;
+        peak = std::max(peak, channelPeak);
+      }
+      while (!peaks_.empty() && peaks_.back().second <= peak) peaks_.pop_back();
+      peaks_.emplace_back(current_.frames, peak);
+      const auto window = static_cast<std::uint64_t>(rate_) * 4 / 10;
+      while (!peaks_.empty() && current_.frames - peaks_.front().first >= window) peaks_.pop_front();
+      current_.truePeak = peaks_.front().second > 0 ? 20 * std::log10(peaks_.front().second) : -std::numeric_limits<double>::infinity();
+    } else current_.error = true;
     ++r; ++processed;
     read_.store(r, std::memory_order_release);
   }

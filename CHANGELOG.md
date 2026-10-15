@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — 2026-10-15
+
+- Add per-source and stream-master True Peak metering in dBTP with libebur128.
+- Select LUFS only, LUFS + True Peak, or True Peak only in settings.
+- Save metric visibility, support both meter orientations and keep LUFS-only as the default.
+- True Peak shows a rolling ~400 ms maximum, warns at -6 dBTP and turns red above 0 dBTP.
+- Verify intersample overs, gain, mute/reset, rolling peak release and all display combinations.
+
 ## 0.1.1 — 2026-10-15
 
 - Simplify the install ZIP to obs-lufs-meter.dll and 導入方法.txt.
