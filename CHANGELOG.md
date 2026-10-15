@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-10-15
+
+- Add opt-in local JSON export every 500 ms with all LUFS modes, True Peak/MAX and source/routing metadata.
+- Publish snapshots atomically and mark disabled, unavailable, changing and stopped states.
+- Add a standard-library Python reader with source selection, sampling and freshness checks.
+- Add an authenticated local OBS WebSocket bridge for inspection, volume/filter changes, checkpoints and restore.
+- Expose the measurement reset hotkey for before/after measurements via OBS WebSocket.
+- Verify authenticated read/change/remeasure/restore and shutdown in isolated OBS.
+
 ## 0.3.0 — 2026-10-15
 
 - Put the measurement reset button immediately to the left of the settings gear.

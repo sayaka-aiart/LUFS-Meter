@@ -34,6 +34,10 @@
           "run": "python3 scripts/check_repo.py"
         },
         {
+          "name": "Test external JSON reader",
+          "run": "python3 -m unittest discover -s tests -p test_read_meter.py"
+        },
+        {
           "name": "Configure measurement tests",
           "run": "cmake -S . -B build-core -DBUILD_OBS_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release"
         },

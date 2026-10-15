@@ -1,24 +1,26 @@
-# LUFS Meter 0.3.0
+# LUFS Meter 0.4.0
 
-True PeakのMAXホールドと、黄色になる数値の設定を追加しました。
+Codexや外部ツールから測定値を読み取り、OBSの調整につなげるための外部連携を追加しました。
 Windows x64 / OBS Studio 32向けです。
 
-## 変更点
+## 使い方
 
-- ソース別・配信マスターのTrue PeakにMAXホールドを追加。小さいMAX表示とバー上の印で確認できます。
-- MAXはミュート中も保持し、右上のリセットボタンでクリアします。
-- 歯車 → 表示 →「True Peak 黄色」で黄色の開始値を設定できます（−60～0 dBTP、初期値−6）。
-- 現在値・バー・MAXに同じ境界値を適用し、次回起動時にも保存します。赤は0 dBTP超です。
-- LUFSのみ / LUFS＋True Peak / True Peakのみ、横・縦表示に対応します。
+1. 歯車 → **外部連携** → **JSON出力** をオンにします。
+2. **パスをコピー** でreadings.jsonの保存先を取得します。
+3. ソースZIPの **scripts/read_meter.py** からLUFS・True Peak・MAXを読み取れます。
+
+JSONは500msごとに更新し、更新時刻・ミュート・測定準備・OBS停止などの状態も出力します。
+表示のオン・オフに関係なくLUFSの全測定モードとTrue Peakを取得できます。
+
+**scripts/obs_control.ps1** はOBS WebSocketを使い、音量・フィルターの取得、変更、
+バックアップからの復元、計測リセットに対応します。
+プラグイン自身が自動でOBSの音声設定を変更する動作はありません。
+詳しくはリポジトリの **docs/EXTERNAL_CONTROL.md** を参照してください。
 
 ## ダウンロード・導入
 
-**LUFS-Meter-Windows-x64.zip** の中身は **obs-lufs-meter.dll** と **導入方法.txt** の2点です。
+**LUFS-Meter-Windows-x64.zip** の中身は従来どおり **obs-lufs-meter.dll** と **導入方法.txt** の2点です。
+OBSを終了し、DLLをOBSの **obs-plugins/64bit/** へコピーして起動します。
 
-1. OBSを終了します。
-2. DLLを C:/Program Files/obs-studio/obs-plugins/64bit/ へコピーします。
-   OBSを別の場所に入れている場合は、その中の obs-plugins/64bit/ です。
-3. OBSを起動し、**ドック → LUFS Meter** を開きます。
-
-対応ソース・ライセンス全文は **LUFS-Meter-Source-and-Licenses.zip** から取得できます。
+連携スクリプト・対応ソース・ライセンスは **LUFS-Meter-Source-and-Licenses.zip** に含まれます。
 SHA256SUMS.txtで両ZIPを検証できます。

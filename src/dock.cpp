@@ -2,6 +2,9 @@
 #include "target.hpp"
 #include <QComboBox>
 #include <QCheckBox>
+#include <QApplication>
+#include <QClipboard>
+#include <QLineEdit>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -217,7 +220,8 @@ Dock::Dock(QWidget* parent) : QWidget(parent) {
     "QLabel#unit {font-family:'Segoe UI'; font-size:9px; color:#707988; padding-bottom:5px;}"
     "QLabel#state,QLabel#smallLabel {font-family:'Segoe UI'; color:#7f8896; font-size:10px;}"
     "QLabel#brand {font-family:'Segoe UI'; font-size:13px; color:#9ca6b4; font-weight:600;}"
-    "QPushButton,QComboBox,QDoubleSpinBox {background:#1b2027; border:1px solid #333b47; border-radius:5px; padding:5px 7px;}"
+    "QPushButton,QComboBox,QDoubleSpinBox,QLineEdit {background:#1b2027; border:1px solid #333b47; border-radius:5px; padding:5px 7px;}"
+    "QLineEdit {selection-background-color:#354252; selection-color:#e2e5e9;}"
     "QPushButton:hover {background:#29313b; border-color:#566474;}"
     "QPushButton:pressed {background:#13171c;}"
     "QPushButton#gear,QPushButton#reset {background:transparent; border:none;} QPushButton#gear:hover,QPushButton#reset:hover {background:#252c35;}"
@@ -290,6 +294,10 @@ void Dock::setTruePeakWarning(double value) {
   truePeakWarning_ = value; updateRows(lastMasters_, lastSources_, lastStatus_);
   if (truePeakWarningChanged) truePeakWarningChanged(value);
 }
+void Dock::setExportEnabled(bool value) {
+  if (value == exportEnabled_) return;
+  exportEnabled_ = value; if (exportEnabledChanged) exportEnabledChanged(value);
+}
 void Dock::updateRows(const std::vector<RowData>& masters, const std::vector<RowData>& sources, const QString& status) {
   lastMasters_ = masters; lastSources_ = sources; lastStatus_ = status;
   auto apply = [this](const std::vector<RowData>& data, std::vector<MeterCard*>& cards, QVBoxLayout* layout, bool master) {
@@ -350,10 +358,17 @@ void Dock::selectSources() {
   if (list->count()) list->setCurrentRow(0); else { sourceTarget->setEnabled(false); inherit->setEnabled(false); }
   connect(showLufs, &QCheckBox::toggled, &dialog, [=](bool visible) { sourceTarget->setEnabled(visible && list->currentItem()); inherit->setEnabled(visible && list->currentItem()); });
   tabs->addTab(sourcePage, QStringLiteral("ソース"));
+  auto* externalPage = new QWidget; externalPage->setObjectName("settingsPage");
+  auto* externalForm = new QFormLayout(externalPage); externalForm->setContentsMargins(16, 20, 16, 16); externalForm->setSpacing(16);
+  auto* exportCheck = new QCheckBox(QStringLiteral("JSON出力")); exportCheck->setObjectName("exportEnabled"); exportCheck->setChecked(exportEnabled_); externalForm->addRow(QStringLiteral("外部連携"), exportCheck);
+  auto* exportFile = new QLineEdit(exportPath_); exportFile->setObjectName("exportPath"); exportFile->setReadOnly(true); exportFile->setCursorPosition(0); exportFile->setToolTip(exportPath_); externalForm->addRow(QStringLiteral("保存先"), exportFile);
+  auto* copyPath = new QPushButton(QStringLiteral("パスをコピー")); externalForm->addRow(QString(), copyPath);
+  connect(copyPath, &QPushButton::clicked, &dialog, [=] { QApplication::clipboard()->setText(exportFile->text()); });
+  tabs->addTab(externalPage, QStringLiteral("外部連携"));
   auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel); layout->addWidget(buttons);
   connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept); connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
   if (dialog.exec() == QDialog::Accepted) {
-    setTruePeakWarning(peakWarning->value()); setMode(mode->currentIndex()); setTarget(target->value()); setOrientation(direction->currentIndex()); setMetrics(showLufs->isChecked(), showPeak->isChecked());
+    setExportEnabled(exportCheck->isChecked()); setTruePeakWarning(peakWarning->value()); setMode(mode->currentIndex()); setTarget(target->value()); setOrientation(direction->currentIndex()); setMetrics(showLufs->isChecked(), showPeak->isChecked());
     QStringList selected;
     for (int i = 0; i < list->count(); ++i) {
       auto* item = list->item(i); const QString id = item->data(Qt::UserRole).toString(); const bool master = item->data(Qt::UserRole + 3).toBool();

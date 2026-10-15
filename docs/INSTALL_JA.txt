@@ -12,6 +12,8 @@ LUFS Meter @VERSION@ / Windows x64 / OBS Studio 32
 「True Peak 黄色」で黄色になる数値を変更できます（初期値−6 dBTP）。0 dBTPを超えると赤です。
 MAXは計測開始後の最大True Peakです。歯車の左のリセットボタンで消去します。
 初期値は3秒平均、目標 -14 LUFSです。
+歯車 → 外部連携 → JSON出力で、Codexなどから測定値を読み出せます。
+連携スクリプトと手順はリポジトリの docs/EXTERNAL_CONTROL.md にあります。
 更新はOBSを終了してDLLを上書き、削除はOBSを終了してDLLを削除します。
 
 【ソース・ライセンス】

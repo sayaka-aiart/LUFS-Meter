@@ -13,13 +13,13 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 
 | 横表示 | 縦表示 |
 | --- | --- |
-| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/vertical.png) |
+| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/vertical.png) |
 
 True Peakのみ（黄色開始値を−12 dBTPにした例）
 
-![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.3.0/docs/images/truepeak.png)
+![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/truepeak.png)
 
-画像はv0.3.0の検証用OBSでテスト音を計測した画面です。
+画像はv0.4.0の検証用OBSでテスト音を計測した画面です。
 
 ## できること
 
@@ -32,6 +32,56 @@ True Peakのみ（黄色開始値を−12 dBTPにした例）
 - True Peakの **MAXホールド** を数値とバーの印で表示。歯車の左のリセットボタンでクリア。
 - ソースごとの目標、表示選択、並べ替え、横・縦表示を右上の歯車で設定。
 - libebur128を内蔵。音声を変更しない計測専用プラグイン。
+
+## Codex・外部ツールとの連携
+
+歯車 → **外部連携** → **JSON出力** で、ソース別・マスターのLUFS、True Peak、MAXを500msごとに読み出せます。
+読み取り用スクリプトと、OBS WebSocketで音量・フィルターを操作するスクリプトを同梱しています。
+
+[外部連携の使い方](docs/EXTERNAL_CONTROL.md) · [連携スクリプト入りソースZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)
+
+### Codexへのプロンプト例
+
+JSON出力をオンにし、下の2つのパスを自分の環境に置き換えてからCodexへ貼り付けます。
+OBS WebSocketの接続・認証設定は[外部連携の使い方](docs/EXTERNAL_CONTROL.md)を参照してください。
+
+```text
+OBSの配信音量を、LUFS Meterの測定値を使って調整してください。
+
+連携スクリプトの場所：<ソースZIPを展開したフォルダー>/scripts
+測定JSON：<LUFS Meterの外部連携画面でコピーしたreadings.jsonのパス>
+OBS WebSocket：ws://127.0.0.1:4455
+認証：OBS_WEBSOCKET_PASSWORD環境変数を使用。パスワードは返答やログへ表示しないでください。
+
+目標（必要に応じて変更してください）：
+・配信マスターの全体平均（Integrated）を−14 LUFS前後へ近づける。
+・変更後のTrue Peak MAXは−1 dBTP以下を目安にする。
+・マイクが聞き取りやすい音量を優先し、BGMとのバランスを保つ。
+
+進め方：
+1. docs/EXTERNAL_CONTROL.mdと各スクリプトの使い方を確認してください。
+   read_meter.pyで数値を読み、obs_control.ps1のInspectで現在の音量・フィルターを取得してください。
+   ソースUUID、プロファイル、シーンコレクションから、同じOBSを対象にしていることを確認してください。
+2. 変更前の音量・フィルター設定を、日時付きの新しいバックアップへ保存してください。
+   配信マスターに送られているソースを対象にし、変更は音量・ゲイン・コンプレッサー・リミッターの必要な項目に絞ってください。
+3. 計測リセットを実行し、30秒の計測開始を案内してください。
+   私は実際の配信と同じBGM・音源を再生し、普段の声と少し大きい声で話します。
+   その区間のソース別・マスターのLUFS、True Peak、MAXを記録してください。
+4. 数値を根拠に、必要な調整を実行してください。
+   設定変更にはobs_control.ps1の-Applyと、毎回新しい-BackupPathを使用してください。
+   音量やゲインは一度に1〜2 dB程度ずつ変更し、変更後の設定を読み直して確認してください。
+   無音、ミュート、測定準備中、古いJSONの値を根拠にゲインを上げないでください。
+5. 変更後はResetMetersでLUFS履歴とTrue Peak MAXをリセットし、同じ条件で再計測してください。
+   目標に近づいたかを比較し、悪化した変更はバックアップから逆順に復元してください。
+   一時的な声の大小を追い続けず、通常の配信で安定する設定にまとめてください。
+6. 最後に、変更した設定、変更前後のLUFS・True Peak MAX、バックアップの場所を簡潔に報告してください。
+
+この依頼は、上記の範囲での設定変更・再計測・必要な復元まで含みます。
+手順の説明だけで終わらず、接続できる範囲で実際に確認・調整してください。
+```
+
+LUFSやTrue Peakだけでは、声質や歪みの聴感までは判定できません。
+EQなどの音質調整も依頼する場合は、比較できる録音も用意してください。
 
 ## インストール
 

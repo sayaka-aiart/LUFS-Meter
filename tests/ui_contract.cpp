@@ -1,4 +1,10 @@
 #include "dock.hpp"
+#include "telemetry.hpp"
+#include <QTemporaryDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <cmath>
 #include <QApplication>
 #include <QComboBox>
 #include <QCheckBox>
@@ -36,9 +42,10 @@ int main(int argc, char** argv) {
     auto* dialog = qobject_cast<QDialog*>(app.activeModalWidget()); if (!dialog) { failure = true; app.quit(); return; }
     for (auto* spin : dialog->findChildren<QDoubleSpinBox*>()) spin->setValue(-18);
     dialog->findChild<QCheckBox*>("showTruePeak")->setChecked(true);
+    dialog->findChild<QCheckBox*>("exportEnabled")->setChecked(true);
     dialog->reject();
   });
-  gear->click(); if (changed || failure || !dock.showsLufs() || dock.showsTruePeak() || dock.truePeakWarning() != -6 || peakWarning != -6) return 3;
+  gear->click(); if (changed || failure || !dock.showsLufs() || dock.showsTruePeak() || dock.truePeakWarning() != -6 || peakWarning != -6 || dock.exportEnabled()) return 3;
   QTimer::singleShot(50, [&] {
     auto* dialog = qobject_cast<QDialog*>(app.activeModalWidget()); if (!dialog) { failure = true; app.quit(); return; }
     const auto combos = dialog->findChildren<QComboBox*>();
@@ -115,6 +122,26 @@ int main(int argc, char** argv) {
   auto cleared = master; cleared.truePeakMax = std::numeric_limits<double>::quiet_NaN();
   dock.updateRows({cleared}, {}, "");
   for (auto* label : dock.findChildren<QLabel*>("truePeakMax")) if (label->text() != QStringLiteral("MAX —")) return 13;
-  std::cout << "PASS: header reset left of gear; MAX labels survive mute, custom warning save/cancel and live recolor; LUFS/both/True Peak in both orientations, cancel, at least one metric, warmup/mute; gear only, cancel, target/mode/source selection, horizontal/vertical switch\n";
+  bool exportChanged = false; dock.exportEnabledChanged = [&](bool value) { exportChanged = value; };
+  QTimer::singleShot(30, [&] { auto* dialog = qobject_cast<QDialog*>(app.activeModalWidget()); if (!dialog) { failure = true; return; } dialog->findChild<QCheckBox*>("exportEnabled")->setChecked(true); dialog->accept(); });
+  gear->click(); if (failure || !dock.exportEnabled() || !exportChanged) return 16;
+  auto exported = master; exported.fresh = true; exported.frames = 48000 * 4; exported.ageMs = 5; exported.momentary = -14; exported.integrated = -15;
+  QJsonObject meta{{"status", "running"}, {"exportEnabled", true}};
+  auto snapshot = lufs::telemetrySnapshot({exported}, {exported}, meta, 48000);
+  auto row = snapshot["sources"].toArray()[0].toObject();
+  if (snapshot["schemaVersion"].toInt() != 1 || row["lufs"].toObject()["shortTerm"].toDouble() != -13.8 || row["truePeakMaxDbtp"].toDouble() != 1.2) return 17;
+  exported.muted = true;
+  row = lufs::telemetrySnapshot({}, {exported}, meta, 48000)["sources"].toArray()[0].toObject();
+  if (!row["truePeakDbtp"].isNull() || !row["lufs"].toObject()["shortTerm"].isNull() || row["truePeakMaxDbtp"].toDouble() != 1.2 || row["status"] != "muted") return 18;
+  exported.muted = false; exported.frames = 480; exported.truePeak = -std::numeric_limits<double>::infinity();
+  row = lufs::telemetrySnapshot({}, {exported}, meta, 48000)["sources"].toArray()[0].toObject();
+  if (!row["lufs"].toObject()["momentary"].isNull() || !row["truePeakDbtp"].isNull()) return 19;
+  QTemporaryDir temporary; const auto exportFile = temporary.filePath("readings.json"); QString error;
+  if (!lufs::writeTelemetry(exportFile, snapshot, &error)) return 20;
+  auto stopped = lufs::telemetrySnapshot({}, {}, QJsonObject{{"status", "stopped"}}, 48000);
+  if (!lufs::writeTelemetry(exportFile, stopped, &error)) return 21;
+  QFile input(exportFile); if (!input.open(QIODevice::ReadOnly) || QJsonDocument::fromJson(input.readAll()).object()["status"] != "stopped") return 22;
+  if (lufs::writeTelemetry(temporary.path(), snapshot, &error) || error.isEmpty()) return 23;
+  std::cout << "PASS: external export save/cancel, full schema, muted/null/held values, atomic publication; header reset left of gear; MAX labels survive mute, custom warning save/cancel and live recolor; LUFS/both/True Peak in both orientations, cancel, at least one metric, warmup/mute; gear only, cancel, target/mode/source selection, horizontal/vertical switch\n";
   return 0;
 }

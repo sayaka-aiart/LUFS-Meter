@@ -1,5 +1,18 @@
 # Verification
 
+## External integration 0.4.0 — 2026-10-15
+
+- Reader tests cover freshness, stopped/disabled/changing states, invalid JSON,
+  unknown schemas and ambiguous source names.
+- Widget/serialization tests cover export save/cancel, full metrics, null values,
+  warmup/mute, preserved MAX, atomic replacement and write failure.
+- Authenticated OBS WebSocket integration in isolated OBS 32.2.2 verified a live
+  JSON sequence, -6.0206 dB input volume change, -3 dB gain-filter change, source
+  filter creation, settings checkpoints and restoration of original state.
+- WebSocket-triggered measurement reset and explicit stopped state were verified.
+  The reader rejected the stopped process. The isolated OBS exited with code 0.
+- This used local synthetic tones and did not change the normal OBS installation.
+
 ## MAX hold and configurable warning 0.3.0 — 2026-10-15
 
 - Measurement tests verify MAX persistence after lower input, mute and queue-loss

@@ -4,6 +4,8 @@
 #include <QPixmap>
 #include <QPushButton>
 #include <QDialog>
+#include <QTabWidget>
+#include <QLayout>
 #include <cmath>
 #include <limits>
 int main(int argc, char** argv) {
@@ -18,6 +20,7 @@ int main(int argc, char** argv) {
     data("game", QStringLiteral("ゲーム音"), -25.4, QStringLiteral("配信トラックに送信")),
     data("bgm", "BGM", -30.1, QStringLiteral("配信トラックに送信")),
     data("fx", QStringLiteral("効果音"), std::numeric_limits<double>::quiet_NaN(), QStringLiteral("配信トラックに送信"), QStringLiteral("ミュート"))};
+  dock.setExportPath("OBS/config/obs-studio/plugin_config/obs-lufs-meter/readings.json");
   dock.setSourceOptions({{"mic", QStringLiteral("マイク"), true}, {"game", QStringLiteral("ゲーム音"), true}, {"bgm", "BGM", true}, {"fx", QStringLiteral("効果音"), true}});
   dock.setMasterOptions({{"master", QStringLiteral("配信マスター"), true}});
   auto redraw = [&] { dock.updateRows(masters, sources, QStringLiteral("画面プレビュー · 表示値はサンプルです")); };
@@ -31,9 +34,9 @@ int main(int argc, char** argv) {
   if (argc > 2 && QString::fromLocal8Bit(argv[2]) == "vertical") { dock.setOrientation(1); dock.resize(variant == "both" ? 660 : 480, 400); }
   redraw(); dock.show();
   if (argc > 1) { const QString path = QString::fromLocal8Bit(argv[1]);
-    if (argc > 2 && QString::fromLocal8Bit(argv[2]) == "settings") {
+    if (argc > 2 && (QString::fromLocal8Bit(argv[2]) == "settings" || QString::fromLocal8Bit(argv[2]) == "external")) {
       QTimer::singleShot(100, [&] { dock.findChild<QPushButton*>("gear")->click(); });
-      QTimer::singleShot(400, [&, path] { if (auto* dialog = qobject_cast<QDialog*>(app.activeModalWidget())) { dialog->grab().save(path); dialog->reject(); } app.quit(); });
+      QTimer::singleShot(400, [&, path] { if (auto* dialog = qobject_cast<QDialog*>(app.activeModalWidget())) { if (QString::fromLocal8Bit(argv[2]) == "external") dialog->findChild<QTabWidget*>()->setCurrentIndex(2); dialog->layout()->activate(); dialog->grab().save(path); dialog->reject(); } app.quit(); });
     } else QTimer::singleShot(400, [&, path] { dock.grab().save(path); app.quit(); }); }
   return app.exec();
 }

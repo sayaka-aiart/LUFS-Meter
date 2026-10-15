@@ -60,6 +60,12 @@ After a normal plugin build:
     .\scripts\run_qa.ps1 -Orientation horizontal -Metrics truepeak
     .\scripts\run_qa.ps1 -Orientation horizontal -Metrics lufs
 
+External integration can also be checked in the same prepared runtime:
+
+    .\scripts\run_external_qa.ps1
+
+This uses a temporary authenticated WebSocket server and restores its test input settings.
+
 These scripts create a disposable runtime and synthetic tones under ignored qa/,
 use its own profile, and collect measurements/screenshots. They do not start
 an external stream or install into your normal OBS.

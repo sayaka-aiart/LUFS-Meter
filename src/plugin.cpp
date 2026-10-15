@@ -1,7 +1,11 @@
 #include "meter.hpp"
 #include "dock.hpp"
 #include "routing.hpp"
+#include "telemetry.hpp"
+#include <QDateTime>
+#include <QUuid>
 #include <obs-module.h>
+#include <obs-hotkey.h>
 #include <obs-frontend-api.h>
 #include <util/config-file.h>
 #include <QApplication>
@@ -92,11 +96,23 @@ public:
   QString routeNote;
   unsigned ticks = 0;
   bool qaSaved = false;
+  QString exportPath, exportError;
+  QString instanceId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+  qint64 lastExportMs = 0;
+  quint64 exportSequence = 0;
+  bool exportWritten = false;
+  obs_hotkey_id resetHotkey = OBS_INVALID_HOTKEY_ID;
   Runtime() {
     char* path = obs_module_config_path("settings.ini");
     QDir().mkpath(QFileInfo(QString::fromUtf8(path)).absolutePath());
     settings = std::make_unique<QSettings>(QString::fromUtf8(path), QSettings::IniFormat); bfree(path);
-    dock = new lufs::Dock;
+    exportPath = QFileInfo(settings->fileName()).dir().filePath("readings.json");
+    dock = new lufs::Dock; dock->setExportPath(exportPath);
+    dock->setExportEnabled(settings->value("exportEnabled", false).toBool());
+    dock->exportEnabledChanged = [this](bool enabled) {
+      settings->setValue("exportEnabled", enabled); settings->sync();
+      if (!enabled) publish({}, {}, "disabled", true); else { lastExportMs = 0; refresh(); }
+    };
     dock->setMode(settings->value("displayMode", 0).toInt());
     dock->setTarget(settings->value("target", -14.0).toDouble());
     dock->setOrientation(settings->value("orientation", 0).toInt());
@@ -112,14 +128,11 @@ public:
       selected = ids; explicitSelection = true;
       settings->setValue(collectionKey + "/selected", selected); settings->sync(); refresh();
     };
-    dock->resetClicked = [this] {
-      std::lock_guard<std::mutex> lock(metersMutex);
-      for (auto& pair : sources) pair.second->meter->reset();
-      for (auto& pair : mixes) pair.second->meter->reset();
-    };
+    dock->resetClicked = [this] { resetMeters(); };
     if (!obs_frontend_add_dock_by_id("obs-lufs-meter", "LUFS Meter", dock)) {
       delete dock; dock = nullptr; blog(LOG_ERROR, "[obs-lufs-meter] dock registration failed"); return;
     }
+    resetHotkey = obs_hotkey_register_frontend("obs-lufs-meter.reset", "LUFS Meter: Reset measurements", [](void* data, obs_hotkey_id, obs_hotkey_t*, bool pressed) { if (pressed) static_cast<Runtime*>(data)->resetMeters(); }, this);
     worker = std::thread([this] {
       while (running.load(std::memory_order_acquire)) {
         { std::lock_guard<std::mutex> lock(metersMutex);
@@ -132,11 +145,35 @@ public:
     blog(LOG_INFO, "[obs-lufs-meter] native dock registered; libebur128 1.2.6; read-only measurement");
   }
   ~Runtime() {
+    if (resetHotkey != OBS_INVALID_HOTKEY_ID) obs_hotkey_unregister(resetHotkey);
     if (timer) timer->stop();
+    if (exportWritten) publish({}, {}, "stopped", true);
     running.store(false, std::memory_order_release); if (worker.joinable()) worker.join();
     { std::lock_guard<std::mutex> lock(metersMutex); sources.clear(); mixes.clear(); }
-    if (dock) { dock->selectionChanged = {}; dock->modeChanged = {}; dock->resetClicked = {}; dock->targetChanged = {}; dock->rowTargetChanged = {}; dock->orientationChanged = {}; dock->metricsChanged = {}; dock->truePeakWarningChanged = {}; obs_frontend_remove_dock("obs-lufs-meter"); }
+    if (dock) { dock->selectionChanged = {}; dock->modeChanged = {}; dock->resetClicked = {}; dock->targetChanged = {}; dock->rowTargetChanged = {}; dock->orientationChanged = {}; dock->metricsChanged = {}; dock->truePeakWarningChanged = {}; dock->exportEnabledChanged = {}; obs_frontend_remove_dock("obs-lufs-meter"); }
     settings->sync();
+  }
+  void resetMeters() {
+    std::lock_guard<std::mutex> lock(metersMutex);
+    for (auto& pair : sources) pair.second->meter->reset();
+    for (auto& pair : mixes) pair.second->meter->reset();
+  }
+  void publish(const std::vector<lufs::RowData>& masters, const std::vector<lufs::RowData>& rows, const QString& status = "running", bool force = false) {
+    const bool enabled = dock ? dock->exportEnabled() : settings->value("exportEnabled", false).toBool();
+    if (!enabled && !force) return;
+    const auto now = QDateTime::currentMSecsSinceEpoch();
+    if (!force && now >= lastExportMs && now - lastExportMs < 500) return;
+    lastExportMs = now;
+    char* profile = obs_frontend_get_current_profile(); char* collection = obs_frontend_get_current_scene_collection();
+    QJsonObject metadata{{"pluginVersion", LUFS_METER_VERSION}, {"instanceId", instanceId}, {"obsPid", static_cast<double>(QCoreApplication::applicationPid())},
+      {"sequence", static_cast<double>(++exportSequence)}, {"status", status}, {"exportEnabled", enabled},
+      {"profile", QString::fromUtf8(profile ? profile : "")}, {"collection", QString::fromUtf8(collection ? collection : "")},
+      {"channels", static_cast<int>(channels)}, {"streaming", live}, {"configuredTrackMask", configuredMask}, {"effectiveTrackMask", mask},
+      {"settings", QJsonObject{{"lufsMode", dock ? dock->mode() : settings->value("displayMode", 0).toInt()}, {"truePeakWarningDbtp", dock ? dock->truePeakWarning() : settings->value("truePeakWarning", -6).toDouble()}, {"showLufs", dock ? dock->showsLufs() : settings->value("showLufs", true).toBool()}, {"showTruePeak", dock ? dock->showsTruePeak() : settings->value("showTruePeak", false).toBool()}}}};
+    bfree(profile); bfree(collection);
+    QString error;
+    if (lufs::writeTelemetry(exportPath, lufs::telemetrySnapshot(masters, rows, metadata, rate), &error)) { exportWritten = true; exportError.clear(); }
+    else if (error != exportError) { exportError = error; blog(LOG_WARNING, "[obs-lufs-meter] JSON export failed: %s", error.toUtf8().constData()); }
   }
   void loadCollection() {
     char* name = obs_frontend_get_current_scene_collection();
@@ -178,7 +215,11 @@ public:
     const auto r = meter.reading(); lufs::RowData data; data.id = id; data.name = name; data.note = note;
     data.target = settings->value(collectionKey + "/targets/" + id, settings->value("target", -14.0)).toDouble();
     data.momentary = r.momentary; data.shortTerm = r.shortTerm; data.integrated = r.integrated; data.truePeak = r.truePeak; data.truePeakMax = r.truePeakMax;
-    const bool fresh = r.lastMs && lufs::now_ms() <= r.lastMs + 1000;
+    const auto now = lufs::now_ms();
+    const bool fresh = r.lastMs && now <= r.lastMs + 1000;
+    data.fresh = fresh; data.active = active; data.muted = muted || r.muted; data.error = r.error;
+    data.frames = r.frames; data.resets = r.resets; data.dropped = r.dropped;
+    data.ageMs = r.lastMs ? static_cast<qint64>(now - r.lastMs) : -1;
     const double value = dock->mode() == 0 ? r.shortTerm : dock->mode() == 1 ? r.momentary : r.integrated;
     const auto threshold = dock->mode() == 0 ? rate * 3ULL : static_cast<std::uint64_t>(rate * .4);
     data.truePeakAvailable = fresh && active && !muted && !r.muted && !r.error && r.frames > 0;
@@ -194,14 +235,16 @@ public:
   }
   void refresh() {
     if (!dock) return;
+    const auto stopFile = qEnvironmentVariable("LUFS_METER_QA_STOP_FILE");
+    if (!qEnvironmentVariableIsEmpty("LUFS_METER_QA_DIR") && !stopFile.isEmpty() && QFileInfo::exists(stopFile)) { QTimer::singleShot(0, qApp, &QApplication::quit); return; }
     loadCollection(); resolveRouting();
     obs_audio_info info{};
-    if (!obs_get_audio_info(&info)) { dock->updateRows({}, {}, QStringLiteral("OBSの音声初期化を待っています")); return; }
+    if (!obs_get_audio_info(&info)) { dock->updateRows({}, {}, QStringLiteral("OBSの音声初期化を待っています")); publish({}, {}, "audio_unavailable"); return; }
     const auto newChannels = get_audio_channels(info.speakers);
     auto* audio = obs_get_audio();
     if (newChannels > 2 || newChannels < 1) {
       std::lock_guard<std::mutex> lock(metersMutex); sources.clear(); mixes.clear();
-      dock->updateRows({}, {}, QStringLiteral("モノラル / ステレオ対応です。OBSの音声設定を確認してください。")); return;
+      dock->updateRows({}, {}, QStringLiteral("モノラル / ステレオ対応です。OBSの音声設定を確認してください。")); publish({}, {}, "unsupported_channels"); return;
     }
     auto available = enumerate_sources();
     if (!explicitSelection) { selected.clear(); for (const auto& s : available) if (selected.size() < 32) selected.append(s.id); }
@@ -232,20 +275,22 @@ public:
         const bool routed = (obs_source_get_audio_mixers(tap.source) & mask) && obs_source_get_monitoring_type(tap.source) != OBS_MONITORING_TYPE_MONITOR_ONLY;
         sourceRows.push_back(row(id, found->name, routed ? QStringLiteral("配信トラックに送信") : QStringLiteral("配信トラックへの送信なし"), *tap.meter,
           obs_source_muted(tap.source) || !obs_source_enabled(tap.source) || obs_source_get_volume(tap.source) == 0, obs_source_active(tap.source)));
+        sourceRows.back().routed = routed; sourceRows.back().volumeGain = obs_source_get_volume(tap.source);
       }
       for (auto it = mixes.begin(); it != mixes.end();) if (!(mask & (1u << it->first))) it = mixes.erase(it); else ++it;
       for (unsigned index = 0; index < 6; ++index) if (mask & (1u << index)) {
         if (!mixes.count(index)) mixes.emplace(index, std::make_unique<MixTap>(index, audio, rate, info.speakers));
         auto& tap = *mixes.at(index);
         auto data = row("mix-" + QString::number(index), QStringLiteral("配信マスター"), QStringLiteral("トラック%1 · %2").arg(index + 1).arg(live ? "実出力から自動選択" : "配信設定から自動選択"), *tap.meter);
-        if (!tap.connected) { data.available = false; data.truePeakAvailable = false; data.state = QStringLiteral("音声取得エラー"); }
-        masterRows.push_back(data);
+        if (!tap.connected) { data.error = true; data.available = false; data.truePeakAvailable = false; data.state = QStringLiteral("音声取得エラー"); }
+        data.routed = true; masterRows.push_back(data);
       }
     }
     dock->updateRows(masterRows, sourceRows, routeNote);
     std::vector<lufs::SourceOption> masterOptions;
     for (const auto& row : masterRows) masterOptions.push_back({row.id, row.name, true, row.target, settings->contains(collectionKey + "/targets/" + row.id)});
     dock->setMasterOptions(std::move(masterOptions));
+    publish(masterRows, sourceRows);
     ++ticks;
     // Opt-in, local QA evidence only. No audio/source/output mutation.
     const QString qa = qEnvironmentVariable("LUFS_METER_QA_DIR");
@@ -267,6 +312,7 @@ std::unique_ptr<Runtime> runtime;
 void on_event(obs_frontend_event event, void*) {
   if ((event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CLEANUP || event == OBS_FRONTEND_EVENT_PROFILE_CHANGING) && runtime) {
     if (runtime->timer) runtime->timer->stop();
+    if (runtime->dock && runtime->dock->exportEnabled()) runtime->publish({}, {}, "configuration_changing", true);
     std::lock_guard<std::mutex> lock(runtime->metersMutex); runtime->sources.clear(); runtime->mixes.clear();
   }
   if ((event == OBS_FRONTEND_EVENT_FINISHED_LOADING || event == OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED || event == OBS_FRONTEND_EVENT_PROFILE_CHANGED) && runtime && runtime->timer) runtime->timer->start(100);
