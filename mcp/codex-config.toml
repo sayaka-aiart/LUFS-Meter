@@ -1,0 +1,10 @@
+# Append this section to the existing Codex config.toml; do not replace the file.
+# Replace C:/LUFS-Meter with the extracted package path.
+# Replace command with the full python.exe path if Python is not on PATH.
+# For portable OBS, add: "--file", "<copied readings.json path>" to args.
+[mcp_servers.lufs_meter]
+command = "python"
+args = ["-X", "utf8", "C:/LUFS-Meter/API/lufs_meter_mcp.py"]
+env_vars = ["OBS_WEBSOCKET_PASSWORD"]
+startup_timeout_sec = 15
+tool_timeout_sec = 90

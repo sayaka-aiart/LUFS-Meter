@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lufs_meter": {
+      "command": "python",
+      "args": ["-X", "utf8", "C:/LUFS-Meter/API/lufs_meter_mcp.py"]
+    }
+  }
+}

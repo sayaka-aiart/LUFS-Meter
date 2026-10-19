@@ -48,6 +48,9 @@ JSON export is off by default. The plugin itself does not adjust volume or filte
 [External integration guide (Japanese)](docs/EXTERNAL_CONTROL.md) ·
 [Source ZIP with integration scripts](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)
 
+For MCP, use the [stdio server](scripts/lufs_meter_mcp.py) and [configuration template](mcp/codex-config.toml) from this repository.
+The latest released source ZIP may predate these MCP additions. See the [BOOTH kit manual (Japanese)](docs/BOOTH_MANUAL_JA.txt) and [API guide (Japanese)](docs/BOOTH_API_JA.md).
+
 ### Example prompt for Codex
 
 Enable JSON export, replace the two path placeholders below, and paste the prompt into Codex.

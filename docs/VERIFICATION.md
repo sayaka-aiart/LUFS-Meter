@@ -1,5 +1,17 @@
 # Verification
 
+## BOOTH kit and MCP adapter — 2026-10-20
+
+- The kit reuses the public v0.4.0 DLL from its checksum-verified release ZIP.
+- Python tests cover stdio initialization/tool discovery, Unicode paths/readings,
+  invalid requests, explicit apply, stale data, context changes and checkpoint creation.
+- The extracted kit, under a path containing Japanese text and a space, controlled
+  isolated OBS 32.2.2 through its MCP stdio interface and authenticated WebSocket.
+  A -6.0206 dB fader change, -3 dB filter change, filter creation/removal, measurement
+  reset, restoration and stopped-data rejection passed. The process exited cleanly.
+- This does not claim acceptance in every AI client. MCP configuration files are
+  templates; executable paths, JSON location and inherited credentials are user-specific.
+
 ## External integration 0.4.0 — 2026-10-15
 
 - Reader tests cover freshness, stopped/disabled/changing states, invalid JSON,

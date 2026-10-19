@@ -24,5 +24,23 @@ LUFS-Meter-Source-and-Licenses.zip supplies matching source and full licenses
 as a separate asset on the same release. Always publish both ZIPs together.
 OBS/Qt runtimes, local profiles, SDKs, build caches and raw QA logs are excluded.
 
+## BOOTH kit
+
+`python scripts/package_booth.py` creates `dist/BOOTH/LUFS-Meter-X.Y.Z-BOOTH-Windows-x64.zip`.
+It reads the verified public release ZIP and SHA256SUMS.txt from `qa/public-release-0.4.0/`;
+use `--release-zip` and `--checksums` for another downloaded release pair.
+It reuses the published DLL, and includes only the manual, runtime API/MCP scripts,
+API guide and MCP configuration templates. Plugin C++ sources and SDKs are excluded.
+`BOOTH掲載文.txt` and `verification.json` are created alongside the ZIP, outside it.
+Commit and publish the runtime scripts and docs before the final packaging run so
+the source commit linked in the manual and BOOTH description is publicly available.
+The original binary release assets remain unchanged.
+
+For isolated runtime QA with the extracted kit, use:
+
+```powershell
+./scripts/run_external_qa.ps1 -BuildDir <test-build-with-the-packaged-DLL> -McpScript <extracted-kit>/API/lufs_meter_mcp.py
+```
+
 The first preview is labeled as such in the release notes. A normal release
 flag is used so GitHub's /releases/latest/download/ URL resolves.

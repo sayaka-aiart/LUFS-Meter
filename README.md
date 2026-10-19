@@ -42,6 +42,10 @@ True Peakのみ（黄色開始値を−12 dBTPにした例）
 
 [外部連携の使い方](docs/EXTERNAL_CONTROL.md) · [連携スクリプト入りソースZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)
 
+MCP接続には[サーバー](scripts/lufs_meter_mcp.py)と[設定ひな形](mcp/codex-config.toml)を使えます。
+このMCP機能はリポジトリ側の追加機能で、v0.4.0のソースZIPには未収録です。
+[BOOTH配布版の説明書](docs/BOOTH_MANUAL_JA.txt) · [AI連携API](docs/BOOTH_API_JA.md)
+
 ### Codexへのプロンプト例
 
 JSON出力をオンにし、下の2つのパスを自分の環境に置き換えてからCodexへ貼り付けます。

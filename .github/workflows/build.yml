@@ -35,7 +35,7 @@
         },
         {
           "name": "Test external JSON reader",
-          "run": "python3 -m unittest discover -s tests -p test_read_meter.py"
+          "run": "python3 -m unittest discover -s tests -p 'test_*.py'"
         },
         {
           "name": "Configure measurement tests",

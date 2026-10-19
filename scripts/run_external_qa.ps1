@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([string]$BuildDir = 'build')
+param([string]$BuildDir = 'build', [string]$McpScript = '')
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $runtimeRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'qa/obs-portable'))
@@ -29,6 +29,36 @@ $hadMeter = Test-Path -LiteralPath $meterConfig
 if ($hadWeb) { Copy-Item -LiteralPath $webConfig -Destination (Join-Path $runDir 'web-config.backup') }
 if ($hadMeter) { Copy-Item -LiteralPath $meterConfig -Destination (Join-Path $runDir 'meter-config.backup') }
 function Invoke-Bridge([string[]]$BridgeArgs) {
+  if ($McpScript) {
+    $pairs = @{}
+    for ($index=0; $index -lt $BridgeArgs.Count; ++$index) {
+      $key=$BridgeArgs[$index].TrimStart('-')
+      if ($key -eq 'Apply') { $pairs[$key]=$true } else { $pairs[$key]=$BridgeArgs[++$index] }
+    }
+    $toolArgs=@{}
+    if($pairs.Source){$toolArgs.source=$pairs.Source}
+    $toolName=switch($pairs.Action){
+      'Inspect' {'obs_inspect'}
+      'SetVolume' {$toolArgs.volume_db=[double]$pairs.VolumeDb; 'obs_set_volume'}
+      'SetFilter' {$toolArgs.filter_name=$pairs.FilterName; $toolArgs.settings=($pairs.SettingsJson | ConvertFrom-Json -AsHashtable); 'obs_set_filter'}
+      'CreateFilter' {$toolArgs.filter_name=$pairs.FilterName; $toolArgs.filter_kind=$pairs.FilterKind; $toolArgs.settings=($pairs.SettingsJson | ConvertFrom-Json -AsHashtable); 'obs_create_filter'}
+      'Restore' {$toolArgs.backup_path=$pairs.FromBackup; 'obs_restore'}
+      'ResetMeters' {'meter_reset'}
+    }
+    if($pairs.Apply){$toolArgs.apply=$true}
+    $requests=@(
+      @{jsonrpc='2.0';id=1;method='initialize';params=@{protocolVersion='2025-06-18';capabilities=@{};clientInfo=@{name='LUFS-QA';version='1'}}},
+      @{jsonrpc='2.0';method='notifications/initialized'},
+      @{jsonrpc='2.0';id=2;method='tools/call';params=@{name=$toolName;arguments=$toolArgs}}
+    ) | ForEach-Object {$_ | ConvertTo-Json -Depth 50 -Compress}
+    $output=$requests | & python -X utf8 $McpScript --file $readingPath --endpoint $endpoint --backup-dir (Join-Path $runDir 'mcp-backups')
+    if($LASTEXITCODE){throw 'MCP process failed'}
+    $reply=($output[-1] | ConvertFrom-Json -AsHashtable)
+    if($reply.error -or $reply.result.isError){throw ($reply | ConvertTo-Json -Depth 50)}
+    $result=$reply.result.content[0].text | ConvertFrom-Json -AsHashtable
+    if($pairs.BackupPath -and $result.backup){ Copy-Item -LiteralPath $result.backup -Destination $pairs.BackupPath }
+    return $result
+  }
   $output = & pwsh -NoProfile -File $bridge -Endpoint $endpoint @BridgeArgs
   if ($LASTEXITCODE) { throw "Bridge failed: $($BridgeArgs[0])" }
   return (($output -join [Environment]::NewLine) | ConvertFrom-Json -AsHashtable)
@@ -96,7 +126,7 @@ try {
   if ($terminal.status -ne 'stopped') { throw 'Missing stopped export state.' }
   $null = & python -X utf8 $reader --file $readingPath 2> (Join-Path $runDir 'stopped-reader.log')
   if ($LASTEXITCODE -ne 2) { throw 'Stopped OBS was accepted as live.' }
-  @{ status='PASS'; scope='isolated OBS 32.2.2, local synthetic audio'; authenticated=$true; liveUpdates=$true; volumeDeltaDb=-6.0206; filterDeltaDb=-3; resetViaWebSocket=$true; settingsRestored=$true; stoppedRejected=$true; directory=$runDir } | ConvertTo-Json | Tee-Object -FilePath (Join-Path $runDir 'verification.json')
+  @{ status='PASS'; scope='isolated OBS 32.2.2, local synthetic audio'; mcp=([bool]$McpScript); authenticated=$true; liveUpdates=$true; volumeDeltaDb=-6.0206; filterDeltaDb=-3; resetViaWebSocket=$true; settingsRestored=$true; stoppedRejected=$true; directory=$runDir } | ConvertTo-Json | Tee-Object -FilePath (Join-Path $runDir 'verification.json')
 } finally {
   if ($obsProcess -and !$obsProcess.HasExited) {
     [IO.File]::WriteAllText($stopFile, 'stop')

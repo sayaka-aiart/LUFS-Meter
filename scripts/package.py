@@ -60,7 +60,7 @@ with zipfile.ZipFile(stable, "w", zipfile.ZIP_DEFLATED) as output:
 # Keep previous staging folders; include only explicitly selected public files.
 stage = Path(tempfile.mkdtemp(prefix=f"source-stage-{version}-", dir=dist))
 public_files = ("CMakeLists.txt", "README.md", "README_JA.md", "README_EN.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md", "CONTRIBUTING.md", ".gitignore", ".gitattributes", ".editorconfig")
-public_dirs = ("src", "tests", "sdk", "scripts", "third_party", "cmake", "docs", ".github")
+public_dirs = ("src", "tests", "sdk", "scripts", "mcp", "third_party", "cmake", "docs", ".github")
 for name in public_files:
     shutil.copy2(root / name, stage / name)
 for name in public_dirs:
