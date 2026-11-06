@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-11-06
 
 - Match the Live Audio Assist Console design: colors, fonts, top bar, cards, buttons, tabs and settings dialog.
 - Draw True Peak as an LED-style meter: green up to the warning level, yellow above it, red above 0 dBTP.
 - Remove the spin buttons from number fields; values are typed or stepped with the arrow keys.
+- Include the local MCP server, API guide and MCP configuration templates in the source ZIP.
+- Add Codex prompt examples for balancing microphone, music and game audio to the README.
 - No change to measurement, JSON export or OBS settings handling.
 
 ## 0.4.0 — 2026-10-15

@@ -11,11 +11,12 @@ import zipfile
 
 def main():
     root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--release-zip', type=Path, default=root / 'qa/public-release-0.4.0/LUFS-Meter-Windows-x64.zip')
-    parser.add_argument('--checksums', type=Path, default=root / 'qa/public-release-0.4.0/SHA256SUMS.txt')
-    args = parser.parse_args()
     version = re.search(r'project\(obs_lufs_meter VERSION ([0-9.]+)', (root / 'CMakeLists.txt').read_text()).group(1)
+    release = root / f'qa/public-release-{version}'
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--release-zip', type=Path, default=release / 'LUFS-Meter-Windows-x64.zip')
+    parser.add_argument('--checksums', type=Path, default=release / 'SHA256SUMS.txt')
+    args = parser.parse_args()
     expected = dict((name, digest) for digest, name in (line.split() for line in args.checksums.read_text().splitlines()))
     payload = args.release_zip.read_bytes()
     assert hashlib.sha256(payload).hexdigest() == expected['LUFS-Meter-Windows-x64.zip'], 'Release ZIP checksum mismatch'

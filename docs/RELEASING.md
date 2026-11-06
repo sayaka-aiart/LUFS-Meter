@@ -27,7 +27,7 @@ OBS/Qt runtimes, local profiles, SDKs, build caches and raw QA logs are excluded
 ## BOOTH kit
 
 `python scripts/package_booth.py` creates `dist/BOOTH/LUFS-Meter-X.Y.Z-BOOTH-Windows-x64.zip`.
-It reads the verified public release ZIP and SHA256SUMS.txt from `qa/public-release-0.4.0/`;
+It reads the verified public release ZIP and SHA256SUMS.txt from `qa/public-release-X.Y.Z/`;
 use `--release-zip` and `--checksums` for another downloaded release pair.
 It reuses the published DLL, and includes only the manual, runtime API/MCP scripts,
 API guide and MCP configuration templates. Plugin C++ sources and SDKs are excluded.

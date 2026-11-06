@@ -5,7 +5,7 @@
 A compact LUFS / True Peak meter for individual OBS audio sources and the stream master.
 For Windows x64 / OBS Studio 32. No additional audio plugin is required.
 
-[![Download for Windows x64](https://img.shields.io/badge/Download-Windows_x64-81ada4?style=for-the-badge)](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)
+[![Download for Windows x64](https://img.shields.io/badge/Download-Windows_x64-4fbfb6?style=for-the-badge)](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)
 
 **[Download the latest ZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)** ·
 [Releases](https://github.com/sayaka-aiart/LUFS-Meter/releases) ·
@@ -16,13 +16,13 @@ The current plugin interface is in Japanese; this README provides English instru
 
 | Horizontal | Vertical |
 | --- | --- |
-| ![Horizontal meters](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/horizontal.png) | ![Vertical meters](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/vertical.png) |
+| ![Horizontal meters](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/horizontal.png) | ![Vertical meters](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/vertical.png) |
 
 True Peak only, with the yellow warning threshold set to −12 dBTP:
 
-![True Peak only](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/truepeak.png)
+![True Peak only](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/truepeak.png)
 
-Screenshots show v0.4.0 measuring test tones in a separate OBS instance.
+Screenshots show v0.5.0 measuring test tones in a separate OBS instance.
 
 ## Features
 
@@ -49,7 +49,7 @@ JSON export is off by default. The plugin itself does not adjust volume or filte
 [Source ZIP with integration scripts](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)
 
 For MCP, use the [stdio server](scripts/lufs_meter_mcp.py) and [configuration template](mcp/codex-config.toml) from this repository.
-The latest released source ZIP may predate these MCP additions. See the [BOOTH kit manual (Japanese)](docs/BOOTH_MANUAL_JA.txt) and [API guide (Japanese)](docs/BOOTH_API_JA.md).
+The source ZIP includes them from v0.5.0. See the [BOOTH kit manual (Japanese)](docs/BOOTH_MANUAL_JA.txt) and [API guide (Japanese)](docs/BOOTH_API_JA.md).
 
 ### Example prompt for Codex
 

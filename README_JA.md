@@ -1,4 +1,4 @@
-# LUFS Meter 0.4.0
+# LUFS Meter 0.5.0
 
 [日本語ホーム](README.md) · [English](README_EN.md)
 

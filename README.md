@@ -5,7 +5,7 @@
 OBSの音声ソースと配信マスターを表示する、コンパクトなLUFS / True Peakメーターです。
 Windows x64 / OBS Studio 32向け。別の音声プラグインは必要ありません。
 
-[![Windows x64をダウンロード](https://img.shields.io/badge/Download-Windows_x64-81ada4?style=for-the-badge)](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)
+[![Windows x64をダウンロード](https://img.shields.io/badge/Download-Windows_x64-4fbfb6?style=for-the-badge)](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)
 
 **[最新版ZIPを直接ダウンロード](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Windows-x64.zip)** ·
 [リリース一覧](https://github.com/sayaka-aiart/LUFS-Meter/releases) ·
@@ -15,13 +15,13 @@ Windows x64 / OBS Studio 32向け。別の音声プラグインは必要あり�
 
 | 横表示 | 縦表示 |
 | --- | --- |
-| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/vertical.png) |
+| ![横表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/horizontal.png) | ![縦表示](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/vertical.png) |
 
 True Peakのみ（黄色開始値を−12 dBTPにした例）
 
-![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.4.0/docs/images/truepeak.png)
+![True Peakのみ](https://raw.githubusercontent.com/sayaka-aiart/LUFS-Meter/v0.5.0/docs/images/truepeak.png)
 
-画像はv0.4.0の検証用OBSでテスト音を計測した画面です。
+画像はv0.5.0の検証用OBSでテスト音を計測した画面です。
 
 ## できること
 
@@ -43,7 +43,7 @@ True Peakのみ（黄色開始値を−12 dBTPにした例）
 [外部連携の使い方](docs/EXTERNAL_CONTROL.md) · [連携スクリプト入りソースZIP](https://github.com/sayaka-aiart/LUFS-Meter/releases/latest/download/LUFS-Meter-Source-and-Licenses.zip)
 
 MCP接続には[サーバー](scripts/lufs_meter_mcp.py)と[設定ひな形](mcp/codex-config.toml)を使えます。
-このMCP機能はリポジトリ側の追加機能で、v0.4.0のソースZIPには未収録です。
+v0.5.0以降はソースZIPにも収録しています。
 [BOOTH配布版の説明書](docs/BOOTH_MANUAL_JA.txt) · [AI連携API](docs/BOOTH_API_JA.md)
 
 ### Codexへのプロンプト例

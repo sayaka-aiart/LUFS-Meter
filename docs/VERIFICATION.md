@@ -1,5 +1,18 @@
 # Verification
 
+## Live Audio Assist design 0.5.0 — 2026-11-06
+
+- The Windows Release build, measurement contract, widget contract and Python
+  reader/MCP tests passed. Measurement, JSON export and OBS settings code did not change.
+- Isolated OBS 32.2.2 passed both metrics in both orientations, True Peak only with a
+  saved -12 dBTP warning, and LUFS only. Voice, BGM and Track 2 measured -16.47, -17.13
+  and -13.78 LUFS, the same as earlier releases. All runs exited with code 0.
+- Current docs/images show these native readings; settings.png and external.png are
+  widget previews.
+- A normal OBS 33.0.0 installation loaded the same design (built just before the version
+  number changed), kept its saved settings and showed live master readings. This was
+  a check of loading and display, not the full measurement run above.
+
 ## BOOTH kit and MCP adapter — 2026-10-20
 
 - The kit reuses the public v0.4.0 DLL from its checksum-verified release ZIP.
