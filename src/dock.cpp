@@ -1,5 +1,6 @@
 #include "dock.hpp"
 #include "target.hpp"
+#include "theme.hpp"
 #include <QComboBox>
 #include <QCheckBox>
 #include <QApplication>
@@ -27,14 +28,20 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace lufs {
-static QColor accent(TargetLevel level) {
-  return QColor(level == TargetLevel::Over ? "#eb7779" : level == TargetLevel::Near ? "#e2c27b" : "#81ada4");
+// LUFS bar fill. Numbers use readingColor() so that red text stays readable on the dark card.
+static QColor lufsBarColor(TargetLevel level) {
+  return QColor(level == TargetLevel::Over ? theme::kMute : level == TargetLevel::Near ? theme::kWarn : theme::kLufs);
 }
-static QColor barAccent(bool peak, TargetLevel level) {
-  return peak && level == TargetLevel::Below ? QColor("#a69bd2") : accent(level);
+static QString readingColor(TargetLevel level) {
+  return level == TargetLevel::Over ? theme::kOverText : level == TargetLevel::Near ? theme::kWarn : theme::kText;
 }
+static QString maxColor(TargetLevel level) {
+  return level == TargetLevel::Over ? theme::kOverText : level == TargetLevel::Near ? theme::kWarn : theme::kDim;
+}
+static double meterFraction(double db) { return std::clamp((db + 60.0) / 60.0, 0.0, 1.0); }
 class LoudnessBar : public QWidget {
 public:
   double value = -60, target = -14, warning = -6, heldPeak = std::numeric_limits<double>::quiet_NaN();
@@ -43,48 +50,72 @@ public:
   bool peak_ = false, compact_ = false;
   explicit LoudnessBar(QWidget* parent, bool vertical = false) : QWidget(parent), vertical_(vertical) {
     if (vertical) { setFixedWidth(40); setMinimumHeight(130); setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding); }
-    else setFixedHeight(16);
+    else setFixedHeight(18);
+  }
+  // True Peak follows the LAA LED meter: 3 px lit and 2 px dark, green up to the warning level,
+  // then yellow. Going over 0 dBTP turns every lit cell red.
+  void paintPeakCells(QPainter& p, const QRectF& track) const {
+    static constexpr double kCell = 3, kStep = 5;
+    p.setRenderHint(QPainter::Antialiasing, false); p.setPen(Qt::NoPen);
+    const double length = vertical_ ? track.height() : track.width();
+    const double lit = valid ? meterFraction(value) * length : 0;
+    const bool over = valid && true_peak_level(value, true, warning) == TargetLevel::Over;
+    for (double at = 0; at < length; at += kStep) {
+      const double size = std::min(kCell, length - at);
+      QColor color(theme::kUnlit);
+      if (at < lit) color = QColor(over ? theme::kMute : (at + size) / length * 60.0 - 60.0 > warning ? theme::kWarn : theme::kOk);
+      p.setBrush(color);
+      p.drawRect(vertical_ ? QRectF(track.x(), track.bottom() - at - size, track.width(), size) : QRectF(track.x() + at, track.y(), size, track.height()));
+    }
+    p.setRenderHint(QPainter::Antialiasing, true);
   }
   void paintEvent(QPaintEvent*) override {
     QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
+    const QColor mark(theme::kText);
+    QFont scale = p.font(); scale.setFamily(QStringLiteral("Bahnschrift")); scale.setPixelSize(10);
     if (vertical_) {
-      const QRectF track(peak_ ? 29 : 27.5, 8, peak_ ? 3 : 6, height() - 16);
-      p.setPen(Qt::NoPen); p.setBrush(QColor("#2b3037")); p.drawRoundedRect(track, 2, 2);
-      if (valid) {
-        const double fraction = std::clamp((value + 60.0) / 60.0, 0.0, 1.0);
-        p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true, warning) : target_level(value, target, true)));
-        p.drawRoundedRect(QRectF(track.x(), track.bottom() - track.height() * fraction, track.width(), track.height() * fraction), 1.5, 1.5);
+      const QRectF track(27, 8, peak_ ? 5 : 7, height() - 16);
+      if (peak_) paintPeakCells(p, track);
+      else {
+        p.setPen(Qt::NoPen); p.setBrush(QColor(theme::kUnlit)); p.drawRoundedRect(track, 2, 2);
+        if (valid) {
+          const double fraction = meterFraction(value);
+          p.setBrush(lufsBarColor(target_level(value, target, true)));
+          p.drawRoundedRect(QRectF(track.x(), track.bottom() - track.height() * fraction, track.width(), track.height() * fraction), 2, 2);
+        }
       }
       if (peak_ && std::isfinite(heldPeak)) {
-        const double y = track.bottom() - track.height() * std::clamp((heldPeak + 60.0) / 60.0, 0.0, 1.0);
-        p.setPen(QPen(barAccent(true, true_peak_level(heldPeak, true, warning)), 2)); p.drawLine(QPointF(26, y), QPointF(35, y));
+        const double y = track.bottom() - track.height() * meterFraction(heldPeak);
+        p.setPen(QPen(QColor(theme::kPeakMark), 2)); p.drawLine(QPointF(25, y), QPointF(track.right() + 2, y));
       }
-      const double ty = track.bottom() - track.height() * std::clamp((target + 60.0) / 60.0, 0.0, 1.0);
-      p.setPen(QPen(QColor("#d1d4d9"), 1)); p.drawLine(QPointF(25, ty), QPointF(36, ty));
-      QFont font = p.font(); font.setPixelSize(9); p.setFont(font); p.setPen(QColor("#6c727e"));
+      const double ty = track.bottom() - track.height() * meterFraction(target);
+      p.setPen(QPen(mark, 1)); p.drawLine(QPointF(25, ty), QPointF(track.right() + 2, ty));
+      p.setFont(scale); p.setPen(QColor(theme::kDim));
       for (int i = 0; i <= 2; ++i) p.drawText(QRectF(0, 2 + (height() - 16) * i / 2.0, 22, 12), Qt::AlignRight, QString::number(-30 * i));
       return;
     }
-    const QRectF track(1, 1, width() - 2, peak_ ? 3 : 6);
-    p.setPen(Qt::NoPen); p.setBrush(QColor("#2b3037")); p.drawRoundedRect(track, 2, 2);
-    if (valid) {
-      const double fraction = std::clamp((value + 60.0) / 60.0, 0.0, 1.0);
-      p.setBrush(barAccent(peak_, peak_ ? true_peak_level(value, true, warning) : target_level(value, target, true)));
-      p.drawRoundedRect(QRectF(track.x(), track.y(), track.width() * fraction, track.height()), peak_ ? 1.5 : 2, peak_ ? 1.5 : 2);
+    const QRectF track(1, 1, width() - 2, peak_ ? 5 : 7);
+    if (peak_) paintPeakCells(p, track);
+    else {
+      p.setPen(Qt::NoPen); p.setBrush(QColor(theme::kUnlit)); p.drawRoundedRect(track, 2, 2);
+      if (valid) {
+        p.setBrush(lufsBarColor(target_level(value, target, true)));
+        p.drawRoundedRect(QRectF(track.x(), track.y(), track.width() * meterFraction(value), track.height()), 2, 2);
+      }
     }
     if (peak_ && std::isfinite(heldPeak)) {
-      const double x = track.x() + track.width() * std::clamp((heldPeak + 60.0) / 60.0, 0.0, 1.0);
-      p.setPen(QPen(barAccent(true, true_peak_level(heldPeak, true, warning)), 2)); p.drawLine(QPointF(x, 0), QPointF(x, 7));
+      const double x = track.x() + track.width() * meterFraction(heldPeak);
+      p.setPen(QPen(QColor(theme::kPeakMark), 2)); p.drawLine(QPointF(x, 0), QPointF(x, track.bottom() + 1));
     }
-    const double tx = track.x() + track.width() * std::clamp((target + 60.0) / 60.0, 0.0, 1.0);
-    p.setPen(QPen(QColor("#d1d4d9"), 1)); p.drawLine(QPointF(tx, 0), QPointF(tx, 8));
+    const double tx = track.x() + track.width() * meterFraction(target);
+    p.setPen(QPen(mark, 1)); p.drawLine(QPointF(tx, 0), QPointF(tx, track.bottom() + 1));
     if (compact_) return;
-    p.setPen(QColor("#6c727e")); QFont font = p.font(); font.setPixelSize(9); p.setFont(font);
+    p.setPen(QColor(theme::kDim)); p.setFont(scale);
     for (int i = 0; i <= 2; ++i) {
       const int x = 1 + static_cast<int>((width() - 2) * i / 2.0);
       const QString text = QString::number(-60 + 30 * i);
       const int tw = p.fontMetrics().horizontalAdvance(text);
-      p.drawText(std::clamp(x - tw / 2, 0, width() - tw), 16, text);
+      p.drawText(std::clamp(x - tw / 2, 0, width() - tw), 18, text);
     }
   }
 };
@@ -123,7 +154,7 @@ public:
       if (peak || (vertical && both)) {
         maxLabel = new QLabel(peak ? QStringLiteral("MAX —") : QString(), panel);
         maxLabel->setObjectName(peak ? "truePeakMax" : "maxSpacer"); maxLabel->setFixedHeight(12);
-        maxLabel->setStyleSheet("font-family:'Segoe UI';font-size:9px;color:#9b92b8;");
+        maxLabel->setStyleSheet(QStringLiteral("font-family:%1;font-size:10px;font-weight:500;color:%2;").arg(theme::kFontNum, theme::kDim));
         if (peak) peakMax_ = maxLabel;
       }
       if (vertical) {
@@ -153,7 +184,7 @@ public:
         column->addLayout(numeric); column->addWidget(bar);
         if (maxLabel) { maxLabel->setAlignment(Qt::AlignRight); column->addWidget(maxLabel); }
       }
-      unit->setStyleSheet(peak ? "color:#b4a5dd; padding-bottom:0px;" : "color:#81ada4; padding-bottom:0px;");
+      unit->setStyleSheet("padding-bottom:0px;");
       metrics->addWidget(panel, 1);
       if (peak) { peakNumber_ = number; peakBar_ = bar; }
       else { loudnessNumber_ = number; loudnessBar_ = bar; }
@@ -170,7 +201,7 @@ public:
       const bool silence = available && std::isinf(reading) && reading < 0;
       number->setText(finite ? QString::number(reading, 'f', 1) : silence ? QStringLiteral("−∞") : QStringLiteral("—"));
       const auto level = peak ? true_peak_level(reading, finite, warning) : target_level(reading, data.target, finite);
-      const QString color = !finite ? "#646c79" : level == TargetLevel::Over || level == TargetLevel::Near ? accent(level).name() : "#e2e5e9";
+      const QString color = finite ? readingColor(level) : QString(theme::kDim);
       const bool both = loudnessNumber_ && peakNumber_;
       int pixels = vertical_ ? (both ? 18 : master_ ? 28 : 20) : master_ ? (both ? 32 : 44) : 22;
       if (peak) pixels = static_cast<int>(std::lround(pixels * 0.875));
@@ -189,8 +220,8 @@ public:
       const bool held = std::isfinite(data.truePeakMax);
       peakMax_->setText(held ? QString("MAX %1").arg(data.truePeakMax, 0, 'f', 1) : QStringLiteral("MAX —"));
       const auto level = true_peak_level(data.truePeakMax, held, warning);
-      const auto color = held ? barAccent(true, level).name() : QString("#646c79");
-      peakMax_->setStyleSheet("font-family:'Segoe UI';font-size:9px;color:" + color + ";");
+      const QString color = held ? maxColor(level) : QString(theme::kDim);
+      peakMax_->setStyleSheet(QStringLiteral("font-family:%1;font-size:10px;font-weight:500;color:%2;").arg(theme::kFontNum, color));
       peakMax_->setToolTip(QStringLiteral("True Peak MAX · dBTP · 計測リセットまで保持"));
     }
     QString state;
@@ -206,63 +237,102 @@ public:
 };
 Dock::Dock(QWidget* parent) : QWidget(parent) {
   setWindowTitle(QStringLiteral("LUFS Meter")); setMinimumWidth(260); setObjectName("lufsDock");
-  setStyleSheet(QStringLiteral(
-    "QWidget {font-family:'Yu Gothic UI'; font-size:11px; color:#d1d5dd;}"
-    "QWidget#lufsDock,QWidget#sourcesContent {background:#111418;}"
-    "QFrame#masterCard {background:#191e24; border:1px solid #353c46; border-radius:10px;}"
-    "QFrame#sourceCard {background:#191d23; border:none; border-radius:8px;}"
+  setAttribute(Qt::WA_StyledBackground, true);
+  QString sheet = QStringLiteral(
+    "QWidget {font-family:$ui$; font-size:12px; color:$text$;}"
+    "QWidget#lufsDock,QWidget#sourcesContent {background:$bg$;}"
+    "QFrame#topBar {background:$bg$; border:none; border-bottom:1px solid $line$;}"
+    "QFrame#masterCard,QFrame#sourceCard {background:$plate$; border:1px solid $line$; border-radius:9px;}"
     "QLabel {border:none; background:transparent;}"
-    "QLabel#masterNumber {font-family:'Segoe UI'; font-size:44px; font-weight:300;}"
-    "QLabel#sourceNumber {font-family:'Segoe UI'; font-size:22px; font-weight:400;}"
-    "QLabel#verticalMasterNumber {font-family:'Segoe UI'; font-size:28px; font-weight:300;}"
-    "QLabel#verticalSourceNumber {font-family:'Segoe UI'; font-size:20px; font-weight:400;}"
-    "QLabel#sourceName {font-size:11px; color:#c9ced7; font-weight:500;}"
-    "QLabel#unit {font-family:'Segoe UI'; font-size:9px; color:#707988; padding-bottom:5px;}"
-    "QLabel#state,QLabel#smallLabel {font-family:'Segoe UI'; color:#7f8896; font-size:10px;}"
-    "QLabel#brand {font-family:'Segoe UI'; font-size:13px; color:#9ca6b4; font-weight:600;}"
-    "QPushButton,QComboBox,QDoubleSpinBox,QLineEdit {background:#1b2027; border:1px solid #333b47; border-radius:5px; padding:5px 7px;}"
-    "QLineEdit {selection-background-color:#354252; selection-color:#e2e5e9;}"
-    "QPushButton:hover {background:#29313b; border-color:#566474;}"
-    "QPushButton:pressed {background:#13171c;}"
-    "QPushButton#gear,QPushButton#reset {background:transparent; border:none;} QPushButton#gear:hover,QPushButton#reset:hover {background:#252c35;}"
-    "QComboBox QAbstractItemView,QListWidget,QDialog,QMenu {background:#1b2027; color:#d1d5dd;}"
-    "QWidget#settingsPage {background:#191e24;} QTabWidget::pane {background:#191e24; border:1px solid #333b47; border-radius:6px;}"
-    "QTabBar::tab {background:#14191f; color:#8995a5; padding:7px 14px; border:1px solid #333b47; border-bottom:none;}"
-    "QTabBar::tab:selected {background:#191e24; color:#d1d5dd;}"
+    "QLabel#masterNumber {font-family:$num$; font-size:44px; font-weight:600;}"
+    "QLabel#sourceNumber {font-family:$num$; font-size:22px; font-weight:600;}"
+    "QLabel#verticalMasterNumber {font-family:$num$; font-size:28px; font-weight:600;}"
+    "QLabel#verticalSourceNumber {font-family:$num$; font-size:20px; font-weight:600;}"
+    "QLabel#sourceName {font-size:12px; font-weight:600;}"
+    "QLabel#unit {font-family:$num$; font-size:10px; font-weight:500; color:$dim$; padding-bottom:5px;}"
+    "QLabel#state,QLabel#smallLabel {font-family:$num$; color:$dim$; font-size:11px; font-weight:500;}"
+    "QLabel#brand {font-family:$num$; font-size:16px; font-weight:700;}"
+    "QPushButton {background:$raised$; border:1px solid $line$; border-radius:7px; min-height:26px; padding:0 10px;}"
+    "QPushButton:hover {border-color:$lineHi$;}"
+    "QPushButton:pressed {background:$surface$;}"
+    "QPushButton:disabled {color:$dim$; background:$surface$;}"
+    "QPushButton:default {background:$raisedOn$; border-color:transparent; color:$onAccent$; font-weight:600;}"
+    "QPushButton#gear,QPushButton#reset {background:transparent; border:none; border-radius:6px; min-height:0; padding:0;}"
+    "QPushButton#gear:hover,QPushButton#reset:hover {background:$surface$;}"
+    "QComboBox,QDoubleSpinBox,QLineEdit {background:$sunken$; border:1px solid $line$; border-radius:7px; min-height:26px; padding:0 8px; selection-background-color:$surfaceHi$; selection-color:$text$;}"
+    "QComboBox:hover,QDoubleSpinBox:hover,QLineEdit:hover {border-color:$lineHi$;}"
+    "QComboBox:disabled,QDoubleSpinBox:disabled {color:$dim$;}"
+    "QComboBox QAbstractItemView,QMenu {background:$surfaceHi$; color:$text$; border:1px solid $lineHi$; selection-background-color:$surface$; selection-color:$text$;}"
+    "QDialog {background:$surface$;}"
+    "QWidget#settingsPage {background:$surface$;}"
+    "QTabWidget::pane {background:$surface$; border:none; border-top:1px solid $line$;}"
+    "QTabBar {background:transparent;}"
+    "QTabBar::tab {background:transparent; color:$dim$; padding:10px 14px; border:none; border-bottom:2px solid transparent;}"
+    "QTabBar::tab:hover {color:$text$;}"
+    "QTabBar::tab:selected {color:$text$; border-bottom:2px solid $text$;}"
+    "QCheckBox {spacing:6px;}"
+    "QCheckBox::indicator,QListWidget::indicator {width:13px; height:13px; background:$sunken$; border:1px solid $lineHi$; border-radius:3px;}"
+    "QCheckBox::indicator:checked,QListWidget::indicator:checked {background:$text$; border-color:$text$;}"
+    "QCheckBox::indicator:disabled {border-color:$line$;}"
+    "QListWidget {background:$sunken$; border:1px solid $line$; border-radius:6px; outline:none;}"
+    "QListWidget::item {min-height:26px; padding:0 4px;}"
+    "QListWidget::item:hover {background:$surface$;}"
+    "QListWidget::item:selected {background:$surfaceHi$; color:$text$;}"
+    "QToolTip {background:$surfaceHi$; color:$text$; border:1px solid $lineHi$;}"
     "QScrollArea {border:none; background:transparent;}"
-    "QScrollBar:vertical {background:#111418; width:5px; margin:0;}"
-    "QScrollBar::handle:vertical {background:#37404b; min-height:24px; border-radius:2px;}"
-    "QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical {height:0;}"
-    "QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical {background:none;}"));
-  auto* root = new QVBoxLayout(this); root->setContentsMargins(12, 10, 12, 12); root->setSpacing(8);
-  auto* header = new QHBoxLayout; auto* brand = new QLabel("LUFS Meter"); brand->setObjectName("brand");
-  QFont brandFont = brand->font(); brandFont.setLetterSpacing(QFont::AbsoluteSpacing, 2); brand->setFont(brandFont);
+    "QScrollBar:vertical {background:transparent; width:6px; margin:0;}"
+    "QScrollBar:horizontal {background:transparent; height:6px; margin:0;}"
+    "QScrollBar::handle:vertical {background:$lineHi$; min-height:24px; border-radius:3px;}"
+    "QScrollBar::handle:horizontal {background:$lineHi$; min-width:24px; border-radius:3px;}"
+    "QScrollBar::add-line,QScrollBar::sub-line {width:0; height:0;}"
+    "QScrollBar::add-page,QScrollBar::sub-page {background:none;}");
+  const QString plate = QStringLiteral("qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #202125,stop:1 #18191c)");
+  const QString raised = QStringLiteral("qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #2f3135,stop:1 #222327)");
+  const QString raisedOn = QStringLiteral("qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #fbfaf5,stop:1 #d6d5d0)");
+  const std::pair<const char*, QString> tokens[] = {
+    {"$ui$", theme::kFontUi}, {"$num$", theme::kFontNum}, {"$bg$", theme::kBg}, {"$surface$", theme::kSurface}, {"$surfaceHi$", theme::kSurfaceHi},
+    {"$sunken$", theme::kSunken}, {"$line$", theme::kLine}, {"$lineHi$", theme::kLineHi}, {"$text$", theme::kText}, {"$dim$", theme::kDim},
+    {"$onAccent$", theme::kOnAccent}, {"$plate$", plate}, {"$raised$", raised}, {"$raisedOn$", raisedOn}};
+  for (const auto& [name, value] : tokens) sheet.replace(QLatin1String(name), value);
+  setStyleSheet(sheet);
+  auto* root = new QVBoxLayout(this); root->setContentsMargins(0, 0, 0, 0); root->setSpacing(0);
+  auto* topBar = new QFrame; topBar->setObjectName("topBar"); topBar->setFixedHeight(44);
+  auto* header = new QHBoxLayout(topBar); header->setContentsMargins(12, 0, 8, 0); header->setSpacing(4);
+  auto* brand = new QLabel("LUFS Meter"); brand->setObjectName("brand");
+  QFont brandFont = brand->font(); brandFont.setLetterSpacing(QFont::PercentageSpacing, 104); brand->setFont(brandFont);
   header->addWidget(brand); header->addStretch();
   mode_ = new QComboBox(this); mode_->addItems({QStringLiteral("3秒平均"), QStringLiteral("瞬間"), QStringLiteral("全体平均")}); mode_->hide();
   target_ = new QDoubleSpinBox(this); target_->setRange(-60, 0); target_->setDecimals(1); target_->setSingleStep(1); target_->setValue(-14); target_->hide();
-  auto* resetButton = new QPushButton; resetButton->setObjectName("reset"); resetButton->setFixedSize(22, 22);
+  auto* resetButton = new QPushButton; resetButton->setObjectName("reset"); resetButton->setFixedSize(28, 28);
   resetButton->setToolTip(QStringLiteral("計測リセット（MAXもクリア）")); resetButton->setAccessibleName(QStringLiteral("計測リセット"));
-  QPixmap resetIcon(20, 20); resetIcon.fill(Qt::transparent); {
-    QPainter p(&resetIcon); p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(QPen(QColor("#929daa"), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  const QPen iconPen(QColor(theme::kText), 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+  QPixmap resetIcon(40, 40); resetIcon.fill(Qt::transparent); {
+    QPainter p(&resetIcon); p.setRenderHint(QPainter::Antialiasing); p.scale(2, 2); p.setPen(iconPen);
     p.drawArc(QRectF(4, 4, 12, 12), 40 * 16, 280 * 16);
     p.drawPolyline(QPolygonF{QPointF(15, 3), QPointF(15, 7), QPointF(11, 6)});
   }
-  resetButton->setIcon(QIcon(resetIcon)); resetButton->setIconSize(QSize(18, 18)); header->addWidget(resetButton);
+  resetIcon.setDevicePixelRatio(2);
+  resetButton->setIcon(QIcon(resetIcon)); resetButton->setIconSize(QSize(20, 20)); header->addWidget(resetButton);
   connect(resetButton, &QPushButton::clicked, this, [this] { if (resetClicked) resetClicked(); });
-  auto* gear = new QPushButton; gear->setObjectName("gear"); gear->setFixedSize(22, 22); gear->setToolTip(QStringLiteral("設定"));
-  QPixmap icon(20, 20); icon.fill(Qt::transparent); { QPainter p(&icon); p.setRenderHint(QPainter::Antialiasing); p.setPen(QPen(QColor("#929daa"), 1.6)); p.drawEllipse(QPointF(10, 10), 5.6, 5.6); p.drawEllipse(QPointF(10, 10), 2.2, 2.2);
-    for (int i = 0; i < 8; ++i) { const double a = i * 3.141592653589793 / 4; p.drawLine(QPointF(10 + 6*std::cos(a), 10+6*std::sin(a)), QPointF(10+8.2*std::cos(a), 10+8.2*std::sin(a))); } }
-  gear->setIcon(QIcon(icon)); gear->setIconSize(QSize(18, 18)); header->addWidget(gear); root->addLayout(header);
-  masters_ = new QVBoxLayout; masters_->setSpacing(8); root->addLayout(masters_);
+  auto* gear = new QPushButton; gear->setObjectName("gear"); gear->setFixedSize(28, 28); gear->setToolTip(QStringLiteral("設定")); gear->setAccessibleName(QStringLiteral("設定"));
+  // Same shape as the settings icon used in the LAA tab rail and the AI panel.
+  QPixmap icon(40, 40); icon.fill(Qt::transparent); {
+    QPainter p(&icon); p.setRenderHint(QPainter::Antialiasing); p.scale(2, 2); p.setPen(iconPen);
+    p.drawEllipse(QPointF(10, 10), 2.5, 2.5);
+    for (int i = 0; i < 8; ++i) { const double a = i * 3.141592653589793 / 4; p.drawLine(QPointF(10 + 5*std::cos(a), 10+5*std::sin(a)), QPointF(10+7.5*std::cos(a), 10+7.5*std::sin(a))); }
+  }
+  icon.setDevicePixelRatio(2);
+  gear->setIcon(QIcon(icon)); gear->setIconSize(QSize(20, 20)); header->addWidget(gear); root->addWidget(topBar);
+  auto* body = new QVBoxLayout; body->setContentsMargins(8, 8, 8, 8); body->setSpacing(6); root->addLayout(body, 1);
+  masters_ = new QVBoxLayout; masters_->setSpacing(6); body->addLayout(masters_);
   status_ = new QLabel(this); status_->hide();
-  sourceHeading_ = new QLabel("SOURCES"); sourceHeading_->hide(); sourceHeading_->setObjectName("smallLabel"); root->addWidget(sourceHeading_);
+  sourceHeading_ = new QLabel("SOURCES"); sourceHeading_->hide(); sourceHeading_->setObjectName("smallLabel"); body->addWidget(sourceHeading_);
   auto* scroll = new QScrollArea; scroll->setWidgetResizable(true); scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-  scroll->viewport()->setStyleSheet("background:#111418;");
+  scroll->viewport()->setStyleSheet(QStringLiteral("background:%1;").arg(theme::kBg));
   auto* content = new QWidget; content->setObjectName("sourcesContent");
-  sources_ = new QVBoxLayout(content); sources_->setContentsMargins(0, 0, 0, 0); sources_->setSpacing(5); sources_->setAlignment(Qt::AlignTop);
+  sources_ = new QVBoxLayout(content); sources_->setContentsMargins(0, 0, 0, 0); sources_->setSpacing(4); sources_->setAlignment(Qt::AlignTop);
   empty_ = new QLabel(QStringLiteral("ソースなし")); empty_->setObjectName("smallLabel"); empty_->setWordWrap(true); sources_->addWidget(empty_);
-  scroll->setWidget(content); root->addWidget(scroll, 1);
+  scroll->setWidget(content); body->addWidget(scroll, 1);
   connect(gear, &QPushButton::clicked, this, [this] { selectSources(); });
   connect(mode_, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int mode) { if (modeChanged) modeChanged(mode); });
   connect(target_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) { if (targetChanged) targetChanged(value); });
@@ -367,6 +437,8 @@ void Dock::selectSources() {
   tabs->addTab(externalPage, QStringLiteral("外部連携"));
   auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel); layout->addWidget(buttons);
   connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept); connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+  // Number fields match LAA: typed or stepped with the arrow keys, with no spin buttons.
+  for (auto* spin : dialog.findChildren<QDoubleSpinBox*>()) spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
   if (dialog.exec() == QDialog::Accepted) {
     setExportEnabled(exportCheck->isChecked()); setTruePeakWarning(peakWarning->value()); setMode(mode->currentIndex()); setTarget(target->value()); setOrientation(direction->currentIndex()); setMetrics(showLufs->isChecked(), showPeak->isChecked());
     QStringList selected;

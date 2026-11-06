@@ -1,5 +1,6 @@
 #include "dock.hpp"
 #include "telemetry.hpp"
+#include "theme.hpp"
 #include <QTemporaryDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -86,7 +87,7 @@ int main(int argc, char** argv) {
     dock.updateRows({master}, {mic}, "");
     if (dock.findChildren<QWidget*>("lufsMetric").size() != (lufs ? 2 : 0)) failure = true;
     if (dock.findChildren<QWidget*>("truePeakMetric").size() != (peak ? 2 : 0)) failure = true;
-    for (auto* label : dock.findChildren<QLabel*>("truePeakMax")) if (label->text() != "MAX 1.2" || !label->styleSheet().contains("#eb7779")) failure = true;
+    for (auto* label : dock.findChildren<QLabel*>("truePeakMax")) if (label->text() != "MAX 1.2" || !label->styleSheet().contains(lufs::theme::kOverText)) failure = true;
     dock.layout()->activate(); app.processEvents();
     if (lufs && peak) for (auto* card : dock.findChildren<QFrame*>()) {
       if (card->objectName() != "masterCard" && card->objectName() != "sourceCard") continue;
@@ -111,9 +112,9 @@ int main(int argc, char** argv) {
   dock.setMetrics(false, true);
   auto warningRow = master; warningRow.truePeak = -10; dock.updateRows({warningRow}, {}, "");
   dock.setTruePeakWarning(-6);
-  for (auto* label : dock.findChildren<QLabel*>()) if (label->property("metric").toString() == "truePeak" && !label->styleSheet().contains("#e2e5e9")) return 11;
+  for (auto* label : dock.findChildren<QLabel*>()) if (label->property("metric").toString() == "truePeak" && !label->styleSheet().contains(lufs::theme::kText)) return 11;
   dock.setTruePeakWarning(-12);
-  for (auto* label : dock.findChildren<QLabel*>()) if (label->property("metric").toString() == "truePeak" && !label->styleSheet().contains("#e2c27b")) return 12;
+  for (auto* label : dock.findChildren<QLabel*>()) if (label->property("metric").toString() == "truePeak" && !label->styleSheet().contains(lufs::theme::kWarn)) return 12;
   dock.setMetrics(true, true); dock.setOrientation(1);
   auto quiet = master; quiet.truePeak = -100; dock.updateRows({quiet}, {quiet}, ""); dock.layout()->activate(); app.processEvents(); dock.updateRows({quiet}, {quiet}, "");
   for (auto* label : dock.findChildren<QLabel*>()) if (label->property("metric").toString() == "truePeak") {

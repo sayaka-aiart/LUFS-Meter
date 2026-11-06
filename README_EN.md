@@ -29,7 +29,7 @@ Screenshots show v0.4.0 measuring test tones in a separate OBS instance.
 - Measure the stream-track master and selected audio sources separately.
 - Display Momentary, Short-term (3 seconds), or Integrated LUFS, plus True Peak in dBTP.
 - Select **LUFS only / LUFS + True Peak / True Peak only** in settings.
-- When both are enabled, horizontal meters stack LUFS above True Peak; vertical meters place LUFS on the left and True Peak on the right. LUFS uses a thick teal bar; True Peak uses a thin lavender bar.
+- When both are enabled, horizontal meters stack LUFS above True Peak; vertical meters place LUFS on the left and True Peak on the right. LUFS uses a thick teal bar; True Peak uses a thin LED-style bar (green up to the warning level, then yellow, red above 0 dBTP).
 - The default LUFS target is **−14 LUFS**. The meter turns yellow from 3 LU below the target through the target, and red above it.
 - Set the True Peak yellow warning threshold independently (default **−6 dBTP**). Values above 0 dBTP turn red.
 - **True Peak MAX hold** appears as a number and a bar marker. Clear it with the reset button to the left of the gear.

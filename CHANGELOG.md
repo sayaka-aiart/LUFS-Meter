@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Match the Live Audio Assist Console design: colors, fonts, top bar, cards, buttons, tabs and settings dialog.
+- Draw True Peak as an LED-style meter: green up to the warning level, yellow above it, red above 0 dBTP.
+- Remove the spin buttons from number fields; values are typed or stepped with the arrow keys.
+- No change to measurement, JSON export or OBS settings handling.
+
 ## 0.4.0 — 2026-10-15
 
 - Add opt-in local JSON export every 500 ms with all LUFS modes, True Peak/MAX and source/routing metadata.
